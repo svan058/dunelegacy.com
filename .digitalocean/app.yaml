@@ -34,6 +34,13 @@ services:
         scope: RUN_AND_BUILD_TIME
         value: /var/www/data
     
+    # Persistent disk to preserve game statistics across deployments
+    # This prevents data loss when redeploying or restarting
+    disks:
+      - name: metaserver-data
+        path: /var/www/data
+        size_gb: 1
+    
     # Health check
     health_check:
       http_path: /metaserver.php?action=list
