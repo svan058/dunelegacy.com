@@ -1,0 +1,65 @@
+# DigitalOcean App Platform Configuration
+# Deploy both website and metaserver from single repo
+
+name: dunelegacy-com
+region: nyc
+
+# Static website
+static_sites:
+  - name: website
+    github:
+      repo: dunelegacy/dunelegacy.com
+      branch: main
+      deploy_on_push: true
+    source_dir: /website
+    output_dir: /
+    routes:
+      - path: /
+    environment_slug: html
+    error_document: 404.html
+
+# PHP metaserver
+services:
+  - name: metaserver
+    github:
+      repo: dunelegacy/dunelegacy.com
+      branch: main
+      deploy_on_push: true
+    source_dir: /metaserver
+    environment_slug: php
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8080
+    routes:
+      - path: /metaserver
+    run_command: |
+      # Ensure writable directory for servers.dat
+      mkdir -p /tmp/metaserver
+      ln -sf /tmp/metaserver/servers.dat servers.dat
+      # Start PHP built-in server
+      php -S 0.0.0.0:8080
+    envs:
+      - key: PHP_VERSION
+        value: "8.2"
+    health_check:
+      http_path: /metaserver/index.php
+      initial_delay_seconds: 10
+      period_seconds: 30
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+
+# Domain configuration
+domains:
+  - domain: dunelegacy.com
+    type: PRIMARY
+    zone: dunelegacy.com
+  - domain: www.dunelegacy.com
+    type: ALIAS
+    zone: dunelegacy.com
+
+# Alerts
+alerts:
+  - rule: DEPLOYMENT_FAILED
+  - rule: DOMAIN_FAILED
+

@@ -1,0 +1,28 @@
+# DigitalOcean
+.do/
+
+# PHP
+vendor/
+composer.lock
+*.log
+
+# Database
+*.db
+*.sqlite
+servers.dat
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Temp
+tmp/
+temp/
+cache/
+
