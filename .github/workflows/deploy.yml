@@ -1,0 +1,28 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual deployment
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install doctl (DigitalOcean CLI)
+      uses: digitalocean/action-doctl@v2
+      with:
+        token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+    
+    - name: Deploy to DigitalOcean App Platform
+      run: |
+        # Update the app using doctl
+        doctl apps update ${{ secrets.DIGITALOCEAN_APP_ID }} --spec .digitalocean/app.yaml
+        
+        echo "✅ Deployment initiated!"
+        echo "Monitor at: https://cloud.digitalocean.com/apps/${{ secrets.DIGITALOCEAN_APP_ID }}"
+

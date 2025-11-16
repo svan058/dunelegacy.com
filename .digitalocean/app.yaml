@@ -1,0 +1,50 @@
+name: dunelegacy-com
+region: nyc
+
+# Static website service
+static_sites:
+  - name: website
+    source_dir: website
+    github:
+      repo: svan058/dunelegacy.com
+      branch: main
+      deploy_on_push: true
+    routes:
+      - path: /
+    catchall_document: index.html
+
+# PHP metaserver service
+services:
+  - name: metaserver
+    source_dir: metaserver
+    github:
+      repo: svan058/dunelegacy.com
+      branch: main
+      deploy_on_push: true
+    environment_slug: php
+    http_port: 8080
+    routes:
+      - path: /metaserver
+    
+    # Writable directory for servers.dat
+    envs:
+      - key: DATA_DIR
+        scope: RUN_AND_BUILD_TIME
+        value: /var/www/data
+    
+    # Health check
+    health_check:
+      http_path: /metaserver/metaserver.php?action=list
+      initial_delay_seconds: 10
+      period_seconds: 30
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+
+# Custom domain (configure after app is created)
+domains:
+  - domain: dunelegacy.com
+    type: PRIMARY
+  - domain: www.dunelegacy.com
+    type: ALIAS
+

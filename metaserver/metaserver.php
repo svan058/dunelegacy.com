@@ -11,8 +11,17 @@ header('Cache-Control: no-cache, must-revalidate');
 
 // Configuration
 define('SERVER_TIMEOUT', 60); // Servers expire after 60 seconds
-define('DATA_FILE', __DIR__ . '/servers.dat');
+define('DATA_DIR', getenv('DATA_DIR') ?: __DIR__);
+define('DATA_FILE', DATA_DIR . '/servers.dat');
 define('MAX_SERVERS', 100);
+
+// Ensure data directory exists and is writable
+if (!is_dir(DATA_DIR)) {
+    @mkdir(DATA_DIR, 0755, true);
+}
+if (!is_writable(DATA_DIR)) {
+    error_log("Warning: Data directory " . DATA_DIR . " is not writable");
+}
 
 // Get action from query string
 $action = $_GET['action'] ?? '';
