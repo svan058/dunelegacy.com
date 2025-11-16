@@ -79,11 +79,28 @@ function handleAdd() {
     }
     
     $servers = loadServers();
-    $serverId = $ip . ':' . $port;
     
-    if (count($servers) >= MAX_SERVERS && !isset($servers[$serverId])) {
+    // Check if server with this port already exists (regardless of IP)
+    // This prevents duplicates from the same host with different internal IPs
+    $existingServerId = null;
+    foreach ($servers as $id => $server) {
+        if ($server['port'] == $port && $server['ip'] == $ip) {
+            $existingServerId = $id;
+            break;
+        }
+    }
+    
+    $serverId = $ip . ':' . $port;
+    $isNewGame = !isset($servers[$serverId]) && $existingServerId === null;
+    
+    if (count($servers) >= MAX_SERVERS && $isNewGame) {
         echo "ERROR: Server list full\n";
         return;
+    }
+    
+    // If it's a duplicate with different IP, remove the old one
+    if ($existingServerId && $existingServerId != $serverId) {
+        unset($servers[$existingServerId]);
     }
     
     $servers[$serverId] = [
@@ -99,8 +116,10 @@ function handleAdd() {
     
     saveServers($servers);
     
-    // Record game start in statistics
-    recordGameStart($name, $map, $maxPlayers, $version);
+    // Only record in statistics if it's a NEW game (not a duplicate/update)
+    if ($isNewGame) {
+        recordGameStart($name, $map, $maxPlayers, $version);
+    }
     
     echo "OK\n";
 }

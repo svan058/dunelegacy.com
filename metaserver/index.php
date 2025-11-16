@@ -107,7 +107,7 @@
                     <th>Map</th>
                     <th>Players</th>
                     <th>Version</th>
-                    <th>Address</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -117,7 +117,7 @@
                         <td><?php echo htmlspecialchars($server['map']); ?></td>
                         <td><?php echo $server['numPlayers'] . ' / ' . $server['maxPlayers']; ?></td>
                         <td><?php echo htmlspecialchars($server['version']); ?></td>
-                        <td><code><?php echo $server['ip'] . ':' . $server['port']; ?></code></td>
+                        <td><span style="color: #4CAF50;">● Available</span></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
