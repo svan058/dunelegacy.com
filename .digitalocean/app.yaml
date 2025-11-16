@@ -25,6 +25,8 @@ services:
       deploy_on_push: true
     dockerfile_path: metaserver/Dockerfile
     http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
     
     # Writable directory for servers.dat
     envs:
