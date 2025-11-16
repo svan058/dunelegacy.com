@@ -19,6 +19,9 @@ if (!defined('DATA_FILE')) {
 if (!defined('MAX_SERVERS')) {
     define('MAX_SERVERS', 100);
 }
+if (!defined('STATS_FILE')) {
+    define('STATS_FILE', DATA_DIR . '/stats.json');
+}
 
 // Ensure data directory exists and is writable
 if (!is_dir(DATA_DIR)) {
@@ -95,6 +98,10 @@ function handleAdd() {
     ];
     
     saveServers($servers);
+    
+    // Record game start in statistics
+    recordGameStart($name, $map, $maxPlayers, $version);
+    
     echo "OK\n";
 }
 
@@ -220,5 +227,104 @@ function sanitize($str) {
     $str = strip_tags($str);
     $str = substr($str, 0, 255);
     return $str;
+}
+
+/**
+ * Record a game start in statistics
+ */
+function recordGameStart($name, $map, $maxPlayers, $version) {
+    $stats = loadStats();
+    
+    // Initialize stats structure if needed
+    if (!isset($stats['total_games'])) {
+        $stats['total_games'] = 0;
+        $stats['recent_games'] = [];
+        $stats['popular_maps'] = [];
+    }
+    
+    // Increment total games
+    $stats['total_games']++;
+    
+    // Add to recent games (last 30 days)
+    $stats['recent_games'][] = [
+        'name' => $name,
+        'map' => $map,
+        'maxPlayers' => $maxPlayers,
+        'version' => $version,
+        'timestamp' => time()
+    ];
+    
+    // Clean old games (older than 30 days)
+    $monthAgo = time() - (30 * 24 * 60 * 60);
+    $stats['recent_games'] = array_filter($stats['recent_games'], function($game) use ($monthAgo) {
+        return $game['timestamp'] > $monthAgo;
+    });
+    
+    // Update popular maps count
+    if (!isset($stats['popular_maps'][$map])) {
+        $stats['popular_maps'][$map] = 0;
+    }
+    $stats['popular_maps'][$map]++;
+    
+    saveStats($stats);
+}
+
+/**
+ * Get statistics
+ */
+function getStats() {
+    $stats = loadStats();
+    
+    // Clean old recent games
+    if (isset($stats['recent_games'])) {
+        $monthAgo = time() - (30 * 24 * 60 * 60);
+        $stats['recent_games'] = array_filter($stats['recent_games'], function($game) use ($monthAgo) {
+            return $game['timestamp'] > $monthAgo;
+        });
+    }
+    
+    // Sort popular maps by count
+    if (isset($stats['popular_maps'])) {
+        arsort($stats['popular_maps']);
+    }
+    
+    return $stats;
+}
+
+/**
+ * Load statistics from file
+ */
+function loadStats() {
+    if (!file_exists(STATS_FILE)) {
+        return [
+            'total_games' => 0,
+            'recent_games' => [],
+            'popular_maps' => []
+        ];
+    }
+    
+    $data = @file_get_contents(STATS_FILE);
+    if ($data === false) {
+        return [
+            'total_games' => 0,
+            'recent_games' => [],
+            'popular_maps' => []
+        ];
+    }
+    
+    $stats = @json_decode($data, true);
+    return is_array($stats) ? $stats : [
+        'total_games' => 0,
+        'recent_games' => [],
+        'popular_maps' => []
+    ];
+}
+
+/**
+ * Save statistics to file
+ */
+function saveStats($stats) {
+    $data = json_encode($stats, JSON_PRETTY_PRINT);
+    @file_put_contents(STATS_FILE, $data, LOCK_EX);
 }
 

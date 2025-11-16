@@ -84,9 +84,16 @@
     $count = count($activeServers);
     ?>
     
+    <?php
+    $stats = getStats();
+    $recentGamesCount = count($stats['recent_games'] ?? []);
+    ?>
+    
     <div class="status <?php echo $count > 0 ? 'ok' : 'warning'; ?>">
         <strong>Status:</strong> Online<br>
         <strong>Active Servers:</strong> <?php echo $count; ?><br>
+        <strong>Total Games (All Time):</strong> <?php echo number_format($stats['total_games'] ?? 0); ?><br>
+        <strong>Games (Last 30 Days):</strong> <?php echo number_format($recentGamesCount); ?><br>
         <strong>Last Updated:</strong> <?php echo date('Y-m-d H:i:s'); ?> UTC
     </div>
     
@@ -119,6 +126,77 @@
         <div class="empty">
             No active game servers at the moment.<br>
             Start a multiplayer game to host a server!
+        </div>
+    <?php endif; ?>
+    
+    <h2>📊 Statistics</h2>
+    
+    <h3>Recent Games (Last 30 Days)</h3>
+    <?php if ($recentGamesCount > 0): ?>
+        <table>
+            <thead>
+                <tr>
+                    <th>Game Name</th>
+                    <th>Map</th>
+                    <th>Players</th>
+                    <th>Version</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                // Show last 20 games
+                $recentGames = array_slice(array_reverse($stats['recent_games']), 0, 20);
+                foreach ($recentGames as $game): 
+                    $timeAgo = time() - $game['timestamp'];
+                    if ($timeAgo < 3600) {
+                        $timeStr = floor($timeAgo / 60) . ' min ago';
+                    } elseif ($timeAgo < 86400) {
+                        $timeStr = floor($timeAgo / 3600) . ' hours ago';
+                    } else {
+                        $timeStr = floor($timeAgo / 86400) . ' days ago';
+                    }
+                ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($game['name']); ?></td>
+                        <td><?php echo htmlspecialchars($game['map']); ?></td>
+                        <td><?php echo $game['maxPlayers']; ?> max</td>
+                        <td><?php echo htmlspecialchars($game['version']); ?></td>
+                        <td><?php echo $timeStr; ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php else: ?>
+        <div class="empty">
+            No games recorded in the last 30 days.
+        </div>
+    <?php endif; ?>
+    
+    <h3>Popular Maps</h3>
+    <?php if (!empty($stats['popular_maps'])): ?>
+        <table>
+            <thead>
+                <tr>
+                    <th>Map Name</th>
+                    <th>Times Played</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                $topMaps = array_slice($stats['popular_maps'], 0, 10, true);
+                foreach ($topMaps as $map => $count): 
+                ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($map); ?></td>
+                        <td><?php echo number_format($count); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php else: ?>
+        <div class="empty">
+            No map statistics available yet.
         </div>
     <?php endif; ?>
     
