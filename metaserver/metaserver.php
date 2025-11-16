@@ -64,11 +64,11 @@ if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
 function handleAdd() {
     $ip = $_SERVER['REMOTE_ADDR'];
     $port = intval($_GET['port'] ?? 0);
-    $name = sanitize($_GET['name'] ?? 'Unnamed Server');
-    $map = sanitize($_GET['map'] ?? 'Unknown');
+    $name = sanitize($_GET['gamename'] ?? $_GET['name'] ?? 'Unnamed Server');
+    $map = sanitize($_GET['mapname'] ?? $_GET['map'] ?? 'Unknown');
     $numPlayers = intval($_GET['numplayers'] ?? 0);
     $maxPlayers = intval($_GET['maxplayers'] ?? 8);
-    $version = sanitize($_GET['version'] ?? '0.0.0');
+    $version = sanitize($_GET['gameversion'] ?? $_GET['version'] ?? '0.0.0');
     
     if ($port < 1 || $port > 65535) {
         echo "ERROR: Invalid port\n";
@@ -117,8 +117,8 @@ function handleUpdate() {
     if (isset($_GET['numplayers'])) {
         $servers[$serverId]['numPlayers'] = intval($_GET['numplayers']);
     }
-    if (isset($_GET['map'])) {
-        $servers[$serverId]['map'] = sanitize($_GET['map']);
+    if (isset($_GET['mapname']) || isset($_GET['map'])) {
+        $servers[$serverId]['map'] = sanitize($_GET['mapname'] ?? $_GET['map']);
     }
     
     $servers[$serverId]['lastUpdate'] = time();
@@ -168,18 +168,22 @@ function handleList() {
         saveServers($activeServers);
     }
     
-    // Output server list
-    echo count($activeServers) . "\n";
+    // Output server list in game-expected format:
+    // OK\n
+    // <ip>\t<port>\t<name>\t<version>\t<map>\t<numplayers>\t<maxplayers>\t<pwdprotected>\t<lastupdate>\n
+    echo "OK\n";
     foreach ($activeServers as $server) {
         echo sprintf(
-            "%s|%d|%s|%s|%d|%d|%s\n",
+            "%s\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%d\n",
             $server['ip'],
             $server['port'],
             $server['name'],
+            $server['version'],
             $server['map'],
             $server['numPlayers'],
             $server['maxPlayers'],
-            $server['version']
+            'false', // password protected (not implemented yet)
+            $server['lastUpdate']
         );
     }
 }
