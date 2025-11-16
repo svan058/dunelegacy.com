@@ -114,6 +114,7 @@ function handleAdd() {
     $numPlayers = intval($_GET['numplayers'] ?? 0);
     $maxPlayers = intval($_GET['maxplayers'] ?? 8);
     $version = sanitize($_GET['gameversion'] ?? $_GET['version'] ?? '0.0.0');
+    $localIP = sanitize($_GET['localip'] ?? ''); // Optional local/LAN IP from client
     
     if ($port < 1 || $port > 65535) {
         echo "ERROR: Invalid port\n";
@@ -142,6 +143,7 @@ function handleAdd() {
         'port' => $port,
         'secret' => $secret,
         'name' => $name,
+        'localIP' => $localIP, // Store local IP if provided
         'map' => $map,
         'numPlayers' => $numPlayers,
         'maxPlayers' => $maxPlayers,
@@ -237,11 +239,11 @@ function handleList() {
     
     // Output server list in game-expected format:
     // OK\n
-    // <ip>\t<port>\t<name>\t<version>\t<map>\t<numplayers>\t<maxplayers>\t<pwdprotected>\t<lastupdate>\n
+    // <ip>\t<port>\t<name>\t<version>\t<map>\t<numplayers>\t<maxplayers>\t<pwdprotected>\t<lastupdate>\t<localip>\n
     echo "OK\n";
     foreach ($activeServers as $server) {
         echo sprintf(
-            "%s\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%d\n",
+            "%s\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%d\t%s\n",
             $server['ip'],
             $server['port'],
             $server['name'],
@@ -250,7 +252,8 @@ function handleList() {
             $server['numPlayers'],
             $server['maxPlayers'],
             'false', // password protected (not implemented yet)
-            $server['lastUpdate']
+            $server['lastUpdate'],
+            $server['localIP'] ?? '' // Local/LAN IP if provided
         );
     }
 }
