@@ -6,14 +6,19 @@
  * Game clients register their servers and query for available games.
  */
 
-header('Content-Type: text/plain');
-header('Cache-Control: no-cache, must-revalidate');
-
 // Configuration
-define('SERVER_TIMEOUT', 60); // Servers expire after 60 seconds
-define('DATA_DIR', getenv('DATA_DIR') ?: __DIR__);
-define('DATA_FILE', DATA_DIR . '/servers.dat');
-define('MAX_SERVERS', 100);
+if (!defined('SERVER_TIMEOUT')) {
+    define('SERVER_TIMEOUT', 60); // Servers expire after 60 seconds
+}
+if (!defined('DATA_DIR')) {
+    define('DATA_DIR', getenv('DATA_DIR') ?: __DIR__);
+}
+if (!defined('DATA_FILE')) {
+    define('DATA_FILE', DATA_DIR . '/servers.dat');
+}
+if (!defined('MAX_SERVERS')) {
+    define('MAX_SERVERS', 100);
+}
 
 // Ensure data directory exists and is writable
 if (!is_dir(DATA_DIR)) {
@@ -23,27 +28,33 @@ if (!is_writable(DATA_DIR)) {
     error_log("Warning: Data directory " . DATA_DIR . " is not writable");
 }
 
-// Get action from query string
-$action = $_GET['action'] ?? '';
-
-// Main routing
-switch($action) {
-    case 'add':
-        handleAdd();
-        break;
-    case 'update':
-        handleUpdate();
-        break;
-    case 'remove':
-        handleRemove();
-        break;
-    case 'list':
-        handleList();
-        break;
-    default:
-        echo "ERROR: Invalid action\n";
-        echo "Valid actions: add, update, remove, list\n";
-        http_response_code(400);
+// Only execute main routing if called directly (not included)
+if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
+    header('Content-Type: text/plain');
+    header('Cache-Control: no-cache, must-revalidate');
+    
+    // Get action from query string
+    $action = $_GET['action'] ?? '';
+    
+    // Main routing
+    switch($action) {
+        case 'add':
+            handleAdd();
+            break;
+        case 'update':
+            handleUpdate();
+            break;
+        case 'remove':
+            handleRemove();
+            break;
+        case 'list':
+            handleList();
+            break;
+        default:
+            echo "ERROR: Invalid action\n";
+            echo "Valid actions: add, update, remove, list\n";
+            http_response_code(400);
+    }
 }
 
 /**
