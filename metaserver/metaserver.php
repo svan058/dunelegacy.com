@@ -67,6 +67,7 @@ if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
 function handleAdd() {
     $ip = $_SERVER['REMOTE_ADDR'];
     $port = intval($_GET['port'] ?? 0);
+    $secret = sanitize($_GET['secret'] ?? '');
     $name = sanitize($_GET['gamename'] ?? $_GET['name'] ?? 'Unnamed Server');
     $map = sanitize($_GET['mapname'] ?? $_GET['map'] ?? 'Unknown');
     $numPlayers = intval($_GET['numplayers'] ?? 0);
@@ -78,34 +79,27 @@ function handleAdd() {
         return;
     }
     
-    $servers = loadServers();
-    
-    // Check if server with this port already exists (regardless of IP)
-    // This prevents duplicates from the same host with different internal IPs
-    $existingServerId = null;
-    foreach ($servers as $id => $server) {
-        if ($server['port'] == $port && $server['ip'] == $ip) {
-            $existingServerId = $id;
-            break;
-        }
+    if (empty($secret)) {
+        echo "ERROR: Secret required\n";
+        return;
     }
     
-    $serverId = $ip . ':' . $port;
-    $isNewGame = !isset($servers[$serverId]) && $existingServerId === null;
+    $servers = loadServers();
+    
+    // Use SECRET as the unique identifier, not IP+port
+    // This correctly identifies the same game even if announced from different IPs
+    $serverId = $secret;
+    $isNewGame = !isset($servers[$serverId]);
     
     if (count($servers) >= MAX_SERVERS && $isNewGame) {
         echo "ERROR: Server list full\n";
         return;
     }
     
-    // If it's a duplicate with different IP, remove the old one
-    if ($existingServerId && $existingServerId != $serverId) {
-        unset($servers[$existingServerId]);
-    }
-    
     $servers[$serverId] = [
         'ip' => $ip,
         'port' => $port,
+        'secret' => $secret,
         'name' => $name,
         'map' => $map,
         'numPlayers' => $numPlayers,
@@ -116,7 +110,7 @@ function handleAdd() {
     
     saveServers($servers);
     
-    // Only record in statistics if it's a NEW game (not a duplicate/update)
+    // Only record in statistics if it's a NEW game
     if ($isNewGame) {
         recordGameStart($name, $map, $maxPlayers, $version);
     }
@@ -128,26 +122,29 @@ function handleAdd() {
  * Update existing server status
  */
 function handleUpdate() {
-    $ip = $_SERVER['REMOTE_ADDR'];
-    $port = intval($_GET['port'] ?? 0);
-    $serverId = $ip . ':' . $port;
+    $secret = sanitize($_GET['secret'] ?? '');
+    
+    if (empty($secret)) {
+        echo "ERROR: Secret required\n";
+        return;
+    }
     
     $servers = loadServers();
     
-    if (!isset($servers[$serverId])) {
+    if (!isset($servers[$secret])) {
         echo "ERROR: Server not found\n";
         return;
     }
     
     // Update fields if provided
     if (isset($_GET['numplayers'])) {
-        $servers[$serverId]['numPlayers'] = intval($_GET['numplayers']);
+        $servers[$secret]['numPlayers'] = intval($_GET['numplayers']);
     }
     if (isset($_GET['mapname']) || isset($_GET['map'])) {
-        $servers[$serverId]['map'] = sanitize($_GET['mapname'] ?? $_GET['map']);
+        $servers[$secret]['map'] = sanitize($_GET['mapname'] ?? $_GET['map']);
     }
     
-    $servers[$serverId]['lastUpdate'] = time();
+    $servers[$secret]['lastUpdate'] = time();
     
     saveServers($servers);
     echo "OK\n";
@@ -157,14 +154,17 @@ function handleUpdate() {
  * Remove a server
  */
 function handleRemove() {
-    $ip = $_SERVER['REMOTE_ADDR'];
-    $port = intval($_GET['port'] ?? 0);
-    $serverId = $ip . ':' . $port;
+    $secret = sanitize($_GET['secret'] ?? '');
+    
+    if (empty($secret)) {
+        echo "ERROR: Secret required\n";
+        return;
+    }
     
     $servers = loadServers();
     
-    if (isset($servers[$serverId])) {
-        unset($servers[$serverId]);
+    if (isset($servers[$secret])) {
+        unset($servers[$secret]);
         saveServers($servers);
     }
     
