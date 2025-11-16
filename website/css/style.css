@@ -343,10 +343,47 @@ nav a:hover {
     border-radius: 5px;
 }
 
+/* Feature Highlight */
+.feature-highlight {
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(139, 69, 19, 0.1) 100%);
+    border: 3px solid var(--primary);
+    border-radius: 15px;
+    padding: 30px;
+    margin: 40px auto;
+    max-width: 700px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(212, 175, 55, 0.2);
+    animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 10px 40px rgba(212, 175, 55, 0.2); }
+    50% { box-shadow: 0 15px 50px rgba(212, 175, 55, 0.4); }
+}
+
+.feature-highlight h3 {
+    color: var(--primary);
+    font-size: 1.8em;
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.feature-callout {
+    font-size: 1.3em;
+    color: var(--light);
+    margin: 0;
+    line-height: 1.6;
+}
+
+.feature-callout strong {
+    color: var(--primary);
+    font-size: 1.2em;
+}
+
 /* Feature List */
 .feature-list {
     max-width: 800px;
-    margin: 0 auto;
+    margin: 40px auto 0;
     list-style: none;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -358,6 +395,10 @@ nav a:hover {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 5px;
     border-left: 3px solid var(--primary);
+}
+
+.feature-list li strong {
+    color: var(--primary);
 }
 
 /* Multiplayer Info */
