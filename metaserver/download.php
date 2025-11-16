@@ -4,6 +4,7 @@
  */
 
 $downloads = [
+    'windows' => 'DuneLegacy-0.98.7.0-Windows-x64.exe',
     'macos' => 'DuneLegacy-0.98.7.0-macOS.dmg',
 ];
 
