@@ -1,5 +1,6 @@
 # DigitalOcean
 .do/
+.digitalocean/accesstoken
 
 # PHP
 vendor/

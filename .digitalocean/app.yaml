@@ -34,7 +34,7 @@ services:
     
     # Health check
     health_check:
-      http_path: /metaserver/metaserver.php?action=list
+      http_path: /metaserver.php?action=list
       initial_delay_seconds: 10
       period_seconds: 30
       timeout_seconds: 5

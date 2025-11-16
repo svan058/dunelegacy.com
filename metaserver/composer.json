@@ -1,0 +1,15 @@
+{
+    "name": "dunelegacy/metaserver",
+    "description": "Dune Legacy Multiplayer Metaserver",
+    "type": "project",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=7.4"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    }
+}
+
