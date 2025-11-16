@@ -31,6 +31,46 @@ if (!is_writable(DATA_DIR)) {
     error_log("Warning: Data directory " . DATA_DIR . " is not writable");
 }
 
+/**
+ * Get the real client IP address, accounting for load balancers and proxies
+ */
+function getRealClientIP() {
+    // Check for common proxy headers (in order of preference)
+    $headers = [
+        'HTTP_X_FORWARDED_FOR',   // Most common (DigitalOcean App Platform uses this)
+        'HTTP_X_REAL_IP',         // nginx
+        'HTTP_CF_CONNECTING_IP',  // Cloudflare
+        'HTTP_X_CLUSTER_CLIENT_IP', // Some load balancers
+        'REMOTE_ADDR'             // Fallback to direct connection
+    ];
+    
+    foreach ($headers as $header) {
+        if (!empty($_SERVER[$header])) {
+            // X-Forwarded-For can contain multiple IPs (client, proxy1, proxy2...)
+            // We want the first one (the original client)
+            if ($header === 'HTTP_X_FORWARDED_FOR') {
+                $ips = explode(',', $_SERVER[$header]);
+                $ip = trim($ips[0]);
+            } else {
+                $ip = $_SERVER[$header];
+            }
+            
+            // Validate IP address
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return $ip;
+            }
+            // If it's a private IP, keep checking other headers (might be behind multiple proxies)
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                // Save as fallback in case no public IP is found
+                $fallbackIP = $ip;
+            }
+        }
+    }
+    
+    // If no public IP found, use the fallback (might be for local development)
+    return $fallbackIP ?? $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+}
+
 // Only execute main routing if called directly (not included)
 if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
     header('Content-Type: text/plain');
@@ -65,7 +105,8 @@ if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
  * Add a new game server
  */
 function handleAdd() {
-    $ip = $_SERVER['REMOTE_ADDR'];
+    // Get real client IP (handle load balancers/proxies)
+    $ip = getRealClientIP();
     $port = intval($_GET['port'] ?? 0);
     $secret = sanitize($_GET['secret'] ?? '');
     $name = sanitize($_GET['gamename'] ?? $_GET['name'] ?? 'Unnamed Server');
