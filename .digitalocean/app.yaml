@@ -15,7 +15,7 @@ ingress:
       component:
         name: website
 
-# PHP metaserver service
+# PHP metaserver service (Docker)
 services:
   - name: metaserver
     source_dir: metaserver
@@ -23,7 +23,8 @@ services:
       repo: svan058/dunelegacy.com
       branch: main
       deploy_on_push: true
-    environment_slug: php
+    dockerfile_path: metaserver/Dockerfile
+    http_port: 8080
     
     # Writable directory for servers.dat
     envs:
@@ -34,9 +35,9 @@ services:
     # Health check
     health_check:
       http_path: /metaserver.php?action=list
-      initial_delay_seconds: 10
+      initial_delay_seconds: 20
       period_seconds: 30
-      timeout_seconds: 5
+      timeout_seconds: 10
       success_threshold: 1
       failure_threshold: 3
 
