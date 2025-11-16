@@ -33,8 +33,8 @@ if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
     header('Content-Type: text/plain');
     header('Cache-Control: no-cache, must-revalidate');
     
-    // Get action from query string
-    $action = $_GET['action'] ?? '';
+    // Get action from query string (support both 'action' and 'command' for backwards compatibility)
+    $action = $_GET['action'] ?? $_GET['command'] ?? '';
     
     // Main routing
     switch($action) {
@@ -53,6 +53,7 @@ if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
         default:
             echo "ERROR: Invalid action\n";
             echo "Valid actions: add, update, remove, list\n";
+            echo "Use: ?action=list or ?command=list\n";
             http_response_code(400);
     }
 }
