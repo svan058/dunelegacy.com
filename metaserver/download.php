@@ -1,37 +1,24 @@
 <?php
 /**
  * Download handler for Dune Legacy installers
+ * Redirects to SourceForge for the latest version
  */
 
 $downloads = [
-    'windows' => 'DuneLegacy-0.98.7.0-Windows-x64.exe',
-    'macos' => 'DuneLegacy-0.98.7.0-macOS.dmg',
+    'windows' => 'https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/DuneLegacy-0.98.7.1-Windows-x64.exe/download',
+    'macos' => 'https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/DuneLegacy-0.98.7.1-macOS.dmg/download',
+    'linux' => 'https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/DuneLegacy-0.98.6.6-Linux.tar.gz/download',
 ];
 
 $platform = $_GET['platform'] ?? '';
 
 if (!isset($downloads[$platform])) {
-    header("HTTP/1.0 404 Not Found");
-    echo "Invalid download request";
+    // Default to SourceForge files page if no platform specified
+    header("Location: https://sourceforge.net/projects/dunelegacy/files/dunelegacy/0.98.0aplpha/");
     exit;
 }
 
-$file = __DIR__ . '/' . $downloads[$platform];
-
-if (!file_exists($file)) {
-    header("HTTP/1.0 404 Not Found");
-    echo "File not found";
-    exit;
-}
-
-// Set headers for file download
-header('Content-Type: application/octet-stream');
-header('Content-Disposition: attachment; filename="' . basename($file) . '"');
-header('Content-Length: ' . filesize($file));
-header('Cache-Control: public, max-age=86400'); // Cache for 1 day
-header('Pragma: public');
-
-// Output file
-readfile($file);
+// Redirect to SourceForge download
+header("Location: " . $downloads[$platform]);
 exit;
 
