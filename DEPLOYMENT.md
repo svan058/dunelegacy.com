@@ -309,12 +309,34 @@ gh secret set METASERVER_DROPLET_IP --body "<NEW_IP>"
 **Quick checks:**
 ```bash
 curl -I https://dunelegacy.com
-curl http://metaserver.dunelegacy.com/metaserver.php?action=list
+curl "https://dunelegacy.com/metaserver/metaserver.php?action=list"
 gh run list
 doctl compute droplet list
 ```
 
-**Need help?** Check GitHub Actions logs or SSH into droplet and view Apache logs.
+**View logs and stats:**
+```bash
+# SSH into droplet
+ssh root@192.81.217.88
+
+# View error logs
+tail -50 /var/log/apache2/dunelegacy-error.log
+
+# View access logs
+tail -50 /var/log/apache2/dunelegacy-access.log
+
+# View game statistics
+cat /var/www/data/stats.json
+
+# View active servers
+ls -la /var/www/data/
+```
+
+**From your Mac (remote):**
+```bash
+ssh root@192.81.217.88 "cat /var/www/data/stats.json"
+ssh root@192.81.217.88 "tail -20 /var/log/apache2/dunelegacy-error.log"
+```
 
 ---
 
