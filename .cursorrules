@@ -63,9 +63,20 @@ git push origin main
 curl https://dunelegacy.com
 curl https://dunelegacy.com/metaserver/metaserver.php?action=list
 
-# Debug
-ssh root@<DROPLET_IP>
-tail -f /var/log/apache2/dunelegacy-error.log
+# Debug - SSH into droplet
+ssh root@192.81.217.88
+
+# View logs
+ssh root@192.81.217.88 "tail -50 /var/log/apache2/dunelegacy-error.log"
+ssh root@192.81.217.88 "tail -50 /var/log/apache2/dunelegacy-access.log"
+
+# View persistent data (stats & active servers)
+ssh root@192.81.217.88 "ls -la /var/www/data/"
+ssh root@192.81.217.88 "cat /var/www/data/stats.json"
+ssh root@192.81.217.88 "cat /var/www/data/servers.dat"
+
+# Follow logs in real-time
+ssh root@192.81.217.88 "tail -f /var/log/apache2/dunelegacy-error.log"
 ```
 
 ## When User Asks About:
