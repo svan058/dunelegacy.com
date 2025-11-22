@@ -259,8 +259,14 @@ The metaserver has an automatic health check that pings `/metaserver/metaserver.
 
 ### "servers.dat" permission errors
 - Check DigitalOcean logs: `doctl apps logs ...`
-- The app automatically creates `/var/www/data/` directory
-- DigitalOcean App Platform handles permissions automatically
+- The app automatically creates `/var/www/data/` directory with proper permissions in the Dockerfile
+- DigitalOcean App Platform persistent disk is mounted at `/var/www/data`
+
+### Scoreboard data is being reset on deployment
+- Ensure the persistent disk is properly configured in `app.yaml` (lines 39-42)
+- Verify DATA_DIR environment variable points to `/var/www/data` (not `/tmp`)
+- Check disk is mounted: Look in DigitalOcean dashboard → App → Settings → Metaserver component
+- Data files: `servers.dat` and `stats.json` should persist across deployments
 
 ### GitHub Actions deployment fails
 - Verify secrets are set correctly in GitHub

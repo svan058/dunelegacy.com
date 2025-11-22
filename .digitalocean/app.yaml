@@ -1,56 +1,7 @@
 name: dunelegacy-com
 region: nyc
 
-# Ingress configuration - routes traffic to correct service
-ingress:
-  rules:
-    - match:
-        path:
-          prefix: /metaserver
-      component:
-        name: metaserver
-    - match:
-        path:
-          prefix: /
-      component:
-        name: website
-
-# PHP metaserver service (Docker)
-services:
-  - name: metaserver
-    source_dir: metaserver
-    github:
-      repo: svan058/dunelegacy.com
-      branch: main
-      deploy_on_push: true
-    dockerfile_path: metaserver/Dockerfile
-    http_port: 8080
-    instance_count: 1
-    instance_size_slug: basic-xxs
-    
-    # Writable directory for servers.dat
-    envs:
-      - key: DATA_DIR
-        scope: RUN_AND_BUILD_TIME
-        value: /var/www/data
-    
-    # Persistent disk to preserve game statistics across deployments
-    # This prevents data loss when redeploying or restarting
-    disks:
-      - name: metaserver-data
-        path: /var/www/data
-        size_gb: 1
-    
-    # Health check
-    health_check:
-      http_path: /metaserver.php?action=list
-      initial_delay_seconds: 20
-      period_seconds: 30
-      timeout_seconds: 10
-      success_threshold: 1
-      failure_threshold: 3
-
-# Static website service
+# Static website service (metaserver moved to dedicated Droplet)
 static_sites:
   - name: website
     source_dir: website
