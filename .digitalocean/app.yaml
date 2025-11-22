@@ -1,20 +1,9 @@
-name: dunelegacy-com
+# App Platform no longer used
+# Website and metaserver moved to dedicated Droplet at dunelegacy.com
+#
+# To fully remove: doctl apps delete <APP_ID>
+# Or keep this minimal config to preserve the app without deploying anything
+
+name: dunelegacy-com-deprecated
 region: nyc
-
-# Static website service (metaserver moved to dedicated Droplet)
-static_sites:
-  - name: website
-    source_dir: website
-    github:
-      repo: svan058/dunelegacy.com
-      branch: main
-      deploy_on_push: true
-    catchall_document: index.html
-
-# Custom domain (configure after app is created)
-domains:
-  - domain: dunelegacy.com
-    type: PRIMARY
-  - domain: www.dunelegacy.com
-    type: ALIAS
 

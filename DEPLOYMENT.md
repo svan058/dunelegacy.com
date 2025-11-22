@@ -22,26 +22,31 @@ cd deploy && ./create-droplet.sh
 
 ## What This Repo Is
 
-- **Website:** Static HTML at https://dunelegacy.com (DigitalOcean App Platform)
-- **Metaserver:** PHP API at http://metaserver.dunelegacy.com (DigitalOcean Droplet)
-- **Auto-deploy:** Both deploy automatically on `git push origin main`
+- **Website:** Static HTML at https://dunelegacy.com
+- **Metaserver:** PHP API at https://dunelegacy.com/metaserver/metaserver.php
+- **Hosting:** Single DigitalOcean Droplet serves both
+- **Auto-deploy:** Deploys automatically on `git push origin main`
 
-**Cost:** $6-9/month total
+**Cost:** $6/month total
 
 ---
 
 ## Architecture
 
 ```
-Website (App Platform)           Metaserver (Droplet)
-$0-3/month                       $6/month
-Static HTML/CSS/JS               Ubuntu + Apache + PHP
-Auto-deploys (~2 min)            Auto-deploys (~20 sec)
-       ↓                                ↓
-dunelegacy.com              metaserver.dunelegacy.com
+Single Droplet ($6/month)
+Ubuntu 24.04 + Apache + PHP
+Auto-deploys (~20 sec)
+         ↓
+    dunelegacy.com
+         ├── / → Static website
+         └── /metaserver/ → PHP API
 ```
 
-**Key fact:** Metaserver uses persistent filesystem at `/var/www/data/` for game statistics.
+**Directory structure on droplet:**
+- `/var/www/html/` → Website files (root)
+- `/var/www/html/metaserver/` → Metaserver PHP files
+- `/var/www/data/` → Persistent game statistics
 
 ---
 
@@ -91,13 +96,20 @@ cd deploy
 **GoDaddy:**
 1. Go to https://dcc.godaddy.com/domains
 2. `dunelegacy.com` → DNS
-3. Add A record:
+3. Update/Add A records:
    ```
    Type: A
-   Name: metaserver
+   Name: @
+   Value: <YOUR_DROPLET_IP>
+   TTL: 600
+   
+   Type: A
+   Name: www
    Value: <YOUR_DROPLET_IP>
    TTL: 600
    ```
+
+**This points BOTH dunelegacy.com and www.dunelegacy.com to your droplet.**
 
 Wait 5-15 minutes for DNS propagation.
 
@@ -125,13 +137,20 @@ git push origin main
 
 ## Data Persistence
 
-**IMPORTANT:** Metaserver has persistent data!
+**IMPORTANT:** Droplet has persistent data!
 
 ```
-/var/www/html/     ← Code (updated by git pull) ✅ Safe to update
-/var/www/data/     ← Data (NEVER touched) ⚠️ PERSISTENT
-  ├── servers.dat  ← Active game servers
-  └── stats.json   ← Game statistics
+/var/www/html/              ← Code (updated by git pull) ✅ Safe to update
+  ├── index.html            ← Website
+  ├── *.css, *.js           ← Website assets
+  └── metaserver/           ← Metaserver PHP files
+      ├── metaserver.php
+      ├── index.php
+      └── download.php
+
+/var/www/data/              ← Data (NEVER touched) ⚠️ PERSISTENT
+  ├── servers.dat           ← Active game servers
+  └── stats.json            ← Game statistics
 ```
 
 **Deployments only update code, data stays forever.**
@@ -140,16 +159,19 @@ git push origin main
 
 ## Troubleshooting
 
-### Metaserver not responding
+### Website or Metaserver not responding
 
 ```bash
-# Test
-curl http://metaserver.dunelegacy.com/metaserver.php?action=list
+# Test website
+curl https://dunelegacy.com
+
+# Test metaserver
+curl https://dunelegacy.com/metaserver/metaserver.php?action=list
 
 # SSH and check
 ssh root@<DROPLET_IP>
 systemctl status apache2
-tail -f /var/log/apache2/metaserver-error.log
+tail -f /var/log/apache2/dunelegacy-error.log
 ```
 
 ### Auto-deploy failing
@@ -198,13 +220,15 @@ dunelegacy.com/
 
 ## Advanced
 
-### Add SSL Certificate
+### Add SSL Certificate (HTTPS)
 
 ```bash
 ssh root@<DROPLET_IP>
 apt install -y certbot python3-certbot-apache
-certbot --apache -d metaserver.dunelegacy.com
+certbot --apache -d dunelegacy.com -d www.dunelegacy.com
 ```
+
+This enables HTTPS and the game will use `https://dunelegacy.com/metaserver/metaserver.php` ✅
 
 ### Enable Backups
 
@@ -216,10 +240,7 @@ doctl compute droplet-action enable-backups <DROPLET_ID>
 ### Manual Deploy
 
 ```bash
-# Website
-doctl apps create-deployment <APP_ID>
-
-# Metaserver
+# Both website and metaserver
 ssh root@<DROPLET_IP> "cd /var/www/html && git pull"
 ```
 
@@ -257,10 +278,11 @@ gh secret set METASERVER_DROPLET_IP --body "<NEW_IP>"
 
 ## Cost Breakdown
 
-- App Platform (website): $0-3/month
-- Droplet (metaserver): $6/month
+- Droplet (website + metaserver): $6/month
 - Backups (optional): $1.20/month
-- **Total: $6-10/month**
+- **Total: $6-7/month**
+
+**Savings:** No App Platform cost! ✅
 
 ---
 

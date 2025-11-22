@@ -40,9 +40,11 @@ runcmd:
   # Remove default Apache files
   - rm -rf /var/www/html/*
   
-  # Clone metaserver code
+  # Clone repo and deploy both website and metaserver
   - git clone https://github.com/svan058/dunelegacy.com.git /tmp/repo
-  - cp -r /tmp/repo/metaserver/* /var/www/html/
+  - cp -r /tmp/repo/website/* /var/www/html/
+  - mkdir -p /var/www/html/metaserver
+  - cp -r /tmp/repo/metaserver/* /var/www/html/metaserver/
   - rm -rf /tmp/repo
   
   # Create data directory with proper permissions
@@ -52,10 +54,10 @@ runcmd:
   
   # Configure Apache
   - |
-    cat > /etc/apache2/sites-available/metaserver.conf <<'EOF'
+    cat > /etc/apache2/sites-available/dunelegacy.conf <<'EOF'
     <VirtualHost *:80>
-        ServerName metaserver.dunelegacy.com
-        ServerAlias dunelegacy.com
+        ServerName dunelegacy.com
+        ServerAlias www.dunelegacy.com
         
         DocumentRoot /var/www/html
         
@@ -65,16 +67,19 @@ runcmd:
             Require all granted
         </Directory>
         
-        SetEnv DATA_DIR /var/www/data
+        # Metaserver data directory
+        <Directory /var/www/html/metaserver>
+            SetEnv DATA_DIR /var/www/data
+        </Directory>
         
-        ErrorLog ${APACHE_LOG_DIR}/metaserver-error.log
-        CustomLog ${APACHE_LOG_DIR}/metaserver-access.log combined
+        ErrorLog ${APACHE_LOG_DIR}/dunelegacy-error.log
+        CustomLog ${APACHE_LOG_DIR}/dunelegacy-access.log combined
     </VirtualHost>
     EOF
   
   # Enable site and restart Apache
   - a2dissite 000-default.conf
-  - a2ensite metaserver.conf
+  - a2ensite dunelegacy.conf
   - systemctl restart apache2
   
   # Set up unattended security updates
@@ -88,8 +93,8 @@ final_message: |
   Data directory: /var/www/data
   Web root: /var/www/html
   
-  Test metaserver:
-    curl http://localhost/metaserver.php?action=list
+  Test website: curl http://localhost/
+  Test metaserver: curl http://localhost/metaserver/metaserver.php?action=list
 CLOUD_INIT
 
 # Create the droplet with cloud-init
@@ -123,17 +128,20 @@ sleep 180  # Give it 3 minutes
 echo ""
 echo "🧪 Testing metaserver..."
 
-# Test the metaserver
-if curl -s --connect-timeout 10 "http://$DROPLET_IP/metaserver.php?action=list" | grep -q "OK"; then
+# Test the website and metaserver
+if curl -s --connect-timeout 10 "http://$DROPLET_IP/metaserver/metaserver.php?action=list" | grep -q "OK"; then
     echo "✅ Metaserver is responding!"
     
     # Test adding a server
-    curl -s "http://$DROPLET_IP/metaserver.php?action=add&port=28747&secret=test123&name=TestServer&map=TestMap&numplayers=1&maxplayers=8&version=0.98.6" > /dev/null
+    curl -s "http://$DROPLET_IP/metaserver/metaserver.php?action=add&port=28747&secret=test123&name=TestServer&map=TestMap&numplayers=1&maxplayers=8&version=0.98.6" > /dev/null
     
-    echo "✅ Metaserver is working correctly!"
+    echo "✅ Website and metaserver are working correctly!"
     echo ""
-    echo "📊 View status page:"
-    echo "   http://$DROPLET_IP/index.php"
+    echo "📊 View website:"
+    echo "   http://$DROPLET_IP/"
+    echo ""
+    echo "📊 View metaserver status:"
+    echo "   http://$DROPLET_IP/metaserver/index.php"
     echo ""
 else
     echo "⚠️  Metaserver not responding yet. This is normal - cloud-init may need more time."
@@ -146,15 +154,21 @@ echo "📝 Next Steps:"
 echo ""
 echo "1. Update DNS to point to this IP:"
 echo "   Type: A"
-echo "   Name: metaserver"
+echo "   Name: @"
+echo "   Value: $DROPLET_IP"
+echo "   TTL: 600"
+echo ""
+echo "   Type: A"
+echo "   Name: www"
 echo "   Value: $DROPLET_IP"
 echo "   TTL: 600"
 echo ""
 echo "2. Test from your browser:"
-echo "   http://$DROPLET_IP/index.php"
+echo "   Website: http://$DROPLET_IP/"
+echo "   Metaserver: http://$DROPLET_IP/metaserver/index.php"
 echo ""
-echo "3. Update game client to use:"
-echo "   http://metaserver.dunelegacy.com/metaserver.php"
+echo "3. Game client will use (no changes needed!):"
+echo "   https://dunelegacy.com/metaserver/metaserver.php"
 echo ""
 echo "4. SSH access (if needed):"
 echo "   ssh root@$DROPLET_IP"
@@ -170,8 +184,9 @@ Size: $SIZE
 Data Directory: /var/www/data
 Web Root: /var/www/html
 
-Test URL: http://$DROPLET_IP/metaserver.php?action=list
-Status Page: http://$DROPLET_IP/index.php
+Website: http://$DROPLET_IP/
+Test URL: http://$DROPLET_IP/metaserver/metaserver.php?action=list
+Status Page: http://$DROPLET_IP/metaserver/index.php
 EOF
 
 echo "   Saved to: /tmp/metaserver-info.txt"

@@ -2,8 +2,9 @@
 
 ## Project Overview
 Website and multiplayer metaserver for Dune Legacy game.
-- Website: Static HTML at https://dunelegacy.com (DigitalOcean App Platform)
-- Metaserver: PHP API at http://metaserver.dunelegacy.com (DigitalOcean Droplet)
+- Website: Static HTML at https://dunelegacy.com
+- Metaserver: PHP API at https://dunelegacy.com/metaserver/metaserver.php
+- Hosting: Single DigitalOcean Droplet serves both
 
 ## Key Files
 - `DEPLOYMENT.md` - Complete deployment & troubleshooting guide (READ THIS FIRST!)
@@ -24,13 +25,16 @@ Website and multiplayer metaserver for Dune Legacy game.
 ```
 
 ## Deployment Architecture
-- **Website**: Auto-deploys via App Platform on push (website/** changes)
-- **Metaserver**: Auto-deploys via GitHub Actions on push (metaserver/** changes)
+- **Single Droplet** serves both website and metaserver
+- **Auto-deploy**: GitHub Actions on push → SSH → git pull
+- **URL structure**: dunelegacy.com/ (website), dunelegacy.com/metaserver/ (API)
 - **Data persistence**: Droplet has persistent data at `/var/www/data/` (servers.dat, stats.json)
 
 ## Critical: Data Persistence
-**Metaserver Droplet filesystem:**
+**Droplet filesystem:**
 - `/var/www/html/` - Code (updated by git pull) ✅ Safe to update
+  - `index.html` etc - Website files
+  - `metaserver/` - Metaserver PHP files
 - `/var/www/data/` - Data (NEVER touched by deploys) ⚠️ PERSISTENT
   - `servers.dat` - Active game servers
   - `stats.json` - Game statistics (total games, recent games, popular maps)
@@ -57,23 +61,25 @@ git push origin main
 
 # Check status
 curl https://dunelegacy.com
-curl http://metaserver.dunelegacy.com/metaserver.php?action=list
+curl https://dunelegacy.com/metaserver/metaserver.php?action=list
 
-# Debug metaserver
-ssh root@metaserver.dunelegacy.com
-tail -f /var/log/apache2/metaserver-error.log
+# Debug
+ssh root@<DROPLET_IP>
+tail -f /var/log/apache2/dunelegacy-error.log
 ```
 
 ## When User Asks About:
 - **Deployment** → Point to DEPLOYMENT.md
 - **Data loss concerns** → Explain `/var/www/data/` is persistent
 - **How to update code** → `git push origin main` (auto-deploys)
+- **Game URL** → https://dunelegacy.com/metaserver/metaserver.php (NO client changes needed!)
 - **Troubleshooting** → See DEPLOYMENT.md "Troubleshooting" section
-- **Cost** → $6-9/month total
+- **Cost** → $6/month total (no App Platform!)
 
 ## Tech Stack
-- Website: Static HTML/CSS/JS (App Platform)
-- Metaserver: PHP 8.3, Apache 2.4, Ubuntu 24.04 (Droplet)
+- Hosting: Ubuntu 24.04 Droplet ($6/month)
+- Web Server: Apache 2.4
+- Language: PHP 8.3 (metaserver), Static HTML (website)
 - CI/CD: GitHub Actions
 - Storage: Flat files (servers.dat, stats.json)
 
