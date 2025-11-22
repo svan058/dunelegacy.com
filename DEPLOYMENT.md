@@ -91,7 +91,21 @@ cd deploy
 - Adds secrets to GitHub
 - Enables auto-deployment workflow
 
-### Step 3: Configure DNS (5 min wait)
+### Step 3: Enable Auto-Deploy (2 min)
+
+```bash
+./setup-github-actions.sh
+```
+
+**It will ask for:**
+- Droplet IP (from step 2)
+- SSH key (press 1 for default)
+
+**This sets up:** Automatic deployment on every `git push`
+
+---
+
+### Step 4: Configure DNS (5 min wait)
 
 **GoDaddy:**
 1. Go to https://dcc.godaddy.com/domains
@@ -220,15 +234,15 @@ dunelegacy.com/
 
 ## Advanced
 
-### Add SSL Certificate (HTTPS)
+### SSL Certificate Renewal
+
+SSL certificates auto-renew via certbot. Check status:
 
 ```bash
 ssh root@<DROPLET_IP>
-apt install -y certbot python3-certbot-apache
-certbot --apache -d dunelegacy.com -d www.dunelegacy.com
+systemctl status certbot.timer
+certbot certificates
 ```
-
-This enables HTTPS and the game will use `https://dunelegacy.com/metaserver/metaserver.php` ✅
 
 ### Enable Backups
 

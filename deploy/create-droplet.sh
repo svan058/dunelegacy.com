@@ -85,6 +85,9 @@ runcmd:
   # Set up unattended security updates
   - apt-get install -y unattended-upgrades
   - dpkg-reconfigure -plow unattended-upgrades
+  
+  # Install certbot for SSL certificates
+  - apt-get install -y certbot python3-certbot-apache
 
 # Final message
 final_message: |
@@ -170,10 +173,15 @@ echo ""
 echo "3. Game client will use (no changes needed!):"
 echo "   https://dunelegacy.com/metaserver/metaserver.php"
 echo ""
-echo "4. SSH access (if needed):"
+echo "4. Enable SSL (REQUIRED for game to work!):"
+echo "   ssh root@$DROPLET_IP"
+echo "   certbot --apache -d dunelegacy.com -d www.dunelegacy.com --non-interactive --agree-tos -m your@email.com"
+echo "   (Replace your@email.com with your actual email)"
+echo ""
+echo "5. SSH access:"
 echo "   ssh root@$DROPLET_IP"
 echo ""
-echo "5. Save this info:"
+echo "6. Save this info:"
 cat > /tmp/metaserver-info.txt <<EOF
 Droplet ID: $DROPLET_ID
 Droplet IP: $DROPLET_IP
