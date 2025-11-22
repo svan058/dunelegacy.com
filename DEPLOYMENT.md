@@ -4,7 +4,7 @@ Everything you need to deploy and maintain the website and metaserver.
 
 ---
 
-## 🚀 Quick Deploy (5 Minutes)
+## 🚀 Quick Deploy (10 Minutes)
 
 ```bash
 # 1. Create metaserver droplet
@@ -14,9 +14,13 @@ cd deploy && ./create-droplet.sh
 ./setup-github-actions.sh
 
 # 3. Update DNS in GoDaddy with the droplet IP
+# (Wait 10-15 minutes for DNS)
+
+# 4. Enable SSL (REQUIRED for game!)
+./setup-ssl.sh
 ```
 
-**Done!** Website auto-deploys via App Platform. Metaserver auto-deploys via GitHub Actions.
+**Done!** Website and metaserver auto-deploy on `git push`.
 
 ---
 
