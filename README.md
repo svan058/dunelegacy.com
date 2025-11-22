@@ -1,93 +1,123 @@
 # Dune Legacy Website & Metaserver
 
-This repository contains the website and multiplayer metaserver for Dune Legacy.
+Official website and multiplayer metaserver for Dune Legacy.
 
-## Structure
+## 🚀 Quick Start
+
+**For detailed instructions, see [documents/](documents/)**
+
+### Deploy Everything
+
+```bash
+# 1. Create metaserver droplet (3 min)
+cd deploy && ./create-droplet.sh
+
+# 2. Enable auto-deploy (2 min)
+./setup-github-actions.sh
+
+# 3. Update DNS in GoDaddy with droplet IP
+```
+
+**Full guide:** [documents/QUICKSTART.md](documents/QUICKSTART.md)
+
+---
+
+## 📚 Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [**QUICKSTART**](documents/QUICKSTART.md) | Deploy in 5 minutes |
+| [Architecture](documents/architecture.md) | System design & tech stack |
+| [Deployment](documents/deployment.md) | Step-by-step deployment |
+| [Troubleshooting](documents/troubleshooting.md) | Fix common issues |
+
+---
+
+## 🏗️ Structure
 
 ```
 dunelegacy.com/
-├── website/          # Public website (HTML/CSS/JS)
-├── metaserver/       # PHP multiplayer metaserver
-└── deploy/           # DigitalOcean deployment configs
+├── website/          # Static website (dunelegacy.com)
+├── metaserver/       # PHP metaserver (metaserver.dunelegacy.com)
+├── deploy/           # Deployment scripts
+├── documents/        # 📖 Documentation
+└── .github/          # CI/CD workflows
 ```
 
-## Website
+---
 
-Static website for https://dunelegacy.com
+## 🌐 Live URLs
 
-- Game information
-- Downloads
-- Manual & FAQ
-- News
+- **Website:** https://dunelegacy.com
+- **Metaserver:** http://metaserver.dunelegacy.com
+- **Status:** http://metaserver.dunelegacy.com/index.php
 
-## Metaserver
+---
 
-PHP-based multiplayer game server directory.
+## 🛠️ Tech Stack
 
-**API Endpoints:**
-- `GET /metaserver/metaserver.php?action=list` - List active game servers
-- `GET /metaserver/metaserver.php?action=add&...` - Register new server
-- `GET /metaserver/metaserver.php?action=update&...` - Update server status
-- `GET /metaserver/metaserver.php?action=remove&...` - Unregister server
+**Website:**
+- Static HTML/CSS/JavaScript
+- DigitalOcean App Platform (CDN-backed)
 
-**Server Data:**
-- Stored in PostgreSQL database
-- Servers expire after 60 seconds without updates
-- Game clients poll every 30 seconds
+**Metaserver:**
+- PHP 8.3 + Apache 2.4
+- Ubuntu 24.04 on DigitalOcean Droplet
+- Flat file storage (servers.dat, stats.json)
 
-## Deployment
+---
 
-### Local Development
+## 🔄 Deployment
+
+**Automatic deployment on push to `main` branch:**
+- Website → App Platform (2 min)
+- Metaserver → Droplet via GitHub Actions (20 sec)
+
+**Make changes:**
+```bash
+# Edit code
+vim metaserver/metaserver.php
+
+# Deploy
+git commit -am "Update"
+git push origin main
+
+# ✅ Auto-deploys!
+```
+
+---
+
+## 📡 Metaserver API
+
+**Endpoints:**
+- `GET /metaserver.php?action=list` - List active games
+- `GET /metaserver.php?action=add&...` - Register game server
+- `GET /metaserver.php?action=update&...` - Update server status
+- `GET /metaserver.php?action=remove&...` - Unregister server
+
+**Details:** See [documents/architecture.md](documents/architecture.md)
+
+---
+
+## 💻 Local Development
 
 ```bash
 # Website
-cd website
-python3 -m http.server 8000
+cd website && python3 -m http.server 8000
+open http://localhost:8000
 
-# Metaserver (requires PHP 8+)
-cd metaserver
-php -S localhost:8080
-```
-
-### Production (DigitalOcean)
-
-Deployed via DigitalOcean App Platform:
-- Website: Static site
-- Metaserver: PHP service
-- Database: PostgreSQL (managed)
-
-See `deploy/` for configuration.
-
-## Domain Configuration
-
-**GoDaddy DNS:**
-```
-dunelegacy.com              A      → DigitalOcean IP
-www.dunelegacy.com          CNAME  → dunelegacy.com
-```
-
-**DigitalOcean Routes:**
-```
-dunelegacy.com              → website/
-dunelegacy.com/metaserver/  → metaserver/
-```
-
-## Development
-
-```bash
-# Clone repo
-git clone https://github.com/dunelegacy/dunelegacy.com.git
-cd dunelegacy.com
-
-# Test website locally
-cd website && open index.html
-
-# Test metaserver locally
+# Metaserver
 cd metaserver && php -S localhost:8080
 curl "http://localhost:8080/metaserver.php?action=list"
 ```
 
-## License
+---
+
+## 📝 License
 
 GPL-2.0+ (same as main game)
+
+---
+
+**Need help?** See [documents/troubleshooting.md](documents/troubleshooting.md)
 
