@@ -115,6 +115,8 @@ function handleAdd() {
     $maxPlayers = intval($_GET['maxplayers'] ?? 8);
     $version = sanitize($_GET['gameversion'] ?? $_GET['version'] ?? '0.0.0');
     $localIP = sanitize($_GET['localip'] ?? ''); // Optional local/LAN IP from client
+    $modName = sanitize($_GET['modname'] ?? 'vanilla');
+    $modVersion = sanitize($_GET['modversion'] ?? '');
     
     if ($port < 1 || $port > 65535) {
         echo "ERROR: Invalid port\n";
@@ -148,6 +150,8 @@ function handleAdd() {
         'numPlayers' => $numPlayers,
         'maxPlayers' => $maxPlayers,
         'version' => $version,
+        'modName' => $modName,
+        'modVersion' => $modVersion,
         'lastUpdate' => time()
     ];
     
@@ -155,7 +159,7 @@ function handleAdd() {
     
     // Only record in statistics if it's a NEW game
     if ($isNewGame) {
-        recordGameStart($name, $map, $maxPlayers, $version);
+        recordGameStart($name, $map, $maxPlayers, $version, $modName, $modVersion);
     }
     
     echo "OK\n";
@@ -239,11 +243,11 @@ function handleList() {
     
     // Output server list in game-expected format:
     // OK\n
-    // <ip>\t<port>\t<name>\t<version>\t<map>\t<numplayers>\t<maxplayers>\t<pwdprotected>\t<lastupdate>\t<localip>\n
+    // <ip>\t<port>\t<name>\t<version>\t<map>\t<numplayers>\t<maxplayers>\t<pwdprotected>\t<lastupdate>\t<localip>\t<modname>\t<modversion>\n
     echo "OK\n";
     foreach ($activeServers as $server) {
         echo sprintf(
-            "%s\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%d\t%s\n",
+            "%s\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%d\t%s\t%s\t%s\n",
             $server['ip'],
             $server['port'],
             $server['name'],
@@ -253,7 +257,9 @@ function handleList() {
             $server['maxPlayers'],
             'false', // password protected (not implemented yet)
             $server['lastUpdate'],
-            $server['localIP'] ?? '' // Local/LAN IP if provided
+            $server['localIP'] ?? '', // Local/LAN IP if provided
+            $server['modName'] ?? 'vanilla',
+            $server['modVersion'] ?? ''
         );
     }
 }
@@ -295,7 +301,7 @@ function sanitize($str) {
 /**
  * Record a game start in statistics
  */
-function recordGameStart($name, $map, $maxPlayers, $version) {
+function recordGameStart($name, $map, $maxPlayers, $version, $modName = 'vanilla', $modVersion = '') {
     $stats = loadStats();
     
     // Initialize stats structure if needed
@@ -303,6 +309,7 @@ function recordGameStart($name, $map, $maxPlayers, $version) {
         $stats['total_games'] = 0;
         $stats['recent_games'] = [];
         $stats['popular_maps'] = [];
+        $stats['popular_mods'] = [];
     }
     
     // Increment total games
@@ -314,6 +321,8 @@ function recordGameStart($name, $map, $maxPlayers, $version) {
         'map' => $map,
         'maxPlayers' => $maxPlayers,
         'version' => $version,
+        'modName' => $modName,
+        'modVersion' => $modVersion,
         'timestamp' => time()
     ];
     
@@ -328,6 +337,16 @@ function recordGameStart($name, $map, $maxPlayers, $version) {
         $stats['popular_maps'][$map] = 0;
     }
     $stats['popular_maps'][$map]++;
+    
+    // Update popular mods count
+    if (!isset($stats['popular_mods'])) {
+        $stats['popular_mods'] = [];
+    }
+    $modKey = $modName . ($modVersion ? ' v' . $modVersion : '');
+    if (!isset($stats['popular_mods'][$modKey])) {
+        $stats['popular_mods'][$modKey] = 0;
+    }
+    $stats['popular_mods'][$modKey]++;
     
     saveStats($stats);
 }
@@ -351,6 +370,11 @@ function getStats() {
         arsort($stats['popular_maps']);
     }
     
+    // Sort popular mods by count
+    if (isset($stats['popular_mods'])) {
+        arsort($stats['popular_mods']);
+    }
+    
     return $stats;
 }
 
@@ -358,29 +382,33 @@ function getStats() {
  * Load statistics from file
  */
 function loadStats() {
+    $defaultStats = [
+        'total_games' => 0,
+        'recent_games' => [],
+        'popular_maps' => [],
+        'popular_mods' => []
+    ];
+    
     if (!file_exists(STATS_FILE)) {
-        return [
-            'total_games' => 0,
-            'recent_games' => [],
-            'popular_maps' => []
-        ];
+        return $defaultStats;
     }
     
     $data = @file_get_contents(STATS_FILE);
     if ($data === false) {
-        return [
-            'total_games' => 0,
-            'recent_games' => [],
-            'popular_maps' => []
-        ];
+        return $defaultStats;
     }
     
     $stats = @json_decode($data, true);
-    return is_array($stats) ? $stats : [
-        'total_games' => 0,
-        'recent_games' => [],
-        'popular_maps' => []
-    ];
+    if (!is_array($stats)) {
+        return $defaultStats;
+    }
+    
+    // Ensure popular_mods exists for backward compatibility
+    if (!isset($stats['popular_mods'])) {
+        $stats['popular_mods'] = [];
+    }
+    
+    return $stats;
 }
 
 /**

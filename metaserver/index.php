@@ -106,16 +106,26 @@
                     <th>Server Name</th>
                     <th>Map</th>
                     <th>Players</th>
+                    <th>Mod</th>
                     <th>Version</th>
                     <th>Status</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($activeServers as $server): ?>
+                <?php foreach ($activeServers as $server): 
+                    // Backward compatibility: default to vanilla for old entries
+                    $modName = $server['modName'] ?? 'vanilla';
+                    $modVersion = $server['modVersion'] ?? '';
+                    $modDisplay = $modName;
+                    if (!empty($modVersion)) {
+                        $modDisplay .= ' v' . $modVersion;
+                    }
+                ?>
                     <tr>
                         <td><?php echo htmlspecialchars($server['name']); ?></td>
                         <td><?php echo htmlspecialchars($server['map']); ?></td>
                         <td><?php echo $server['numPlayers'] . ' / ' . $server['maxPlayers']; ?></td>
+                        <td><?php echo htmlspecialchars($modDisplay); ?></td>
                         <td><?php echo htmlspecialchars($server['version']); ?></td>
                         <td><span style="color: #4CAF50;">● Available</span></td>
                     </tr>
@@ -139,6 +149,7 @@
                     <th>Game Name</th>
                     <th>Map</th>
                     <th>Players</th>
+                    <th>Mod</th>
                     <th>Version</th>
                     <th>Time</th>
                 </tr>
@@ -156,11 +167,19 @@
                     } else {
                         $timeStr = floor($timeAgo / 86400) . ' days ago';
                     }
+                    // Backward compatibility: default to vanilla for old entries
+                    $modName = $game['modName'] ?? 'vanilla';
+                    $modVersion = $game['modVersion'] ?? '';
+                    $modDisplay = $modName;
+                    if (!empty($modVersion)) {
+                        $modDisplay .= ' v' . $modVersion;
+                    }
                 ?>
                     <tr>
                         <td><?php echo htmlspecialchars($game['name']); ?></td>
                         <td><?php echo htmlspecialchars($game['map']); ?></td>
                         <td><?php echo $game['maxPlayers']; ?> max</td>
+                        <td><?php echo htmlspecialchars($modDisplay); ?></td>
                         <td><?php echo htmlspecialchars($game['version']); ?></td>
                         <td><?php echo $timeStr; ?></td>
                     </tr>
@@ -197,6 +216,34 @@
     <?php else: ?>
         <div class="empty">
             No map statistics available yet.
+        </div>
+    <?php endif; ?>
+    
+    <h3>Popular Mods</h3>
+    <?php if (!empty($stats['popular_mods'])): ?>
+        <table>
+            <thead>
+                <tr>
+                    <th>Mod</th>
+                    <th>Times Played</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                $topMods = array_slice($stats['popular_mods'], 0, 10, true);
+                foreach ($topMods as $mod => $count): 
+                ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($mod); ?></td>
+                        <td><?php echo number_format($count); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php else: ?>
+        <div class="empty">
+            No mod statistics available yet.<br>
+            <small>Games without mod info are counted as "vanilla"</small>
         </div>
     <?php endif; ?>
     
