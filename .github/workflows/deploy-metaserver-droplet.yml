@@ -21,34 +21,13 @@ jobs:
           DROPLET_IP: ${{ secrets.METASERVER_DROPLET_IP }}
           SSH_PRIVATE_KEY: ${{ secrets.DROPLET_SSH_KEY }}
         run: |
-          # Setup SSH
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts
           
-          # Deploy to droplet
-          echo "🚀 Deploying to droplet..."
-          ssh -o StrictHostKeyChecking=no root@$DROPLET_IP << 'ENDSSH'
-            set -e
-            cd /var/www/html
-            
-            echo "📥 Pulling latest code from GitHub..."
-            git pull origin main
-            
-            echo "📂 Copying website files to root..."
-            cp -r /var/www/html/website/* /var/www/html/
-            
-            echo "🔧 Setting permissions..."
-            chown -R www-data:www-data /var/www/html
-            
-            echo "✅ Deployment complete!"
-            
-            # Show current version info
-            echo "📊 Current git commit:"
-            git log -1 --oneline
-ENDSSH
+          echo "Deploying to droplet..."
+          ssh -o StrictHostKeyChecking=no root@$DROPLET_IP 'cd /var/www/html && git pull origin main && cp -r website/* . && chown -R www-data:www-data /var/www/html && git log -1 --oneline'
           
-          echo "🎉 Website and metaserver deployed successfully!"
-          echo "🌐 View at: https://dunelegacy.com"
+          echo "Deployment complete!"
 
