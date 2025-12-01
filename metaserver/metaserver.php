@@ -23,6 +23,14 @@ if (!defined('STATS_FILE')) {
     define('STATS_FILE', DATA_DIR . '/stats.json');
 }
 
+// Latest game version - update this when releasing new versions
+if (!defined('LATEST_VERSION')) {
+    define('LATEST_VERSION', '0.99.2');
+}
+if (!defined('DOWNLOAD_URL')) {
+    define('DOWNLOAD_URL', 'https://dunelegacy.com/#download');
+}
+
 // Ensure data directory exists and is writable
 if (!is_dir(DATA_DIR)) {
     @mkdir(DATA_DIR, 0755, true);
@@ -93,9 +101,12 @@ if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
         case 'list':
             handleList();
             break;
+        case 'version':
+            handleVersion();
+            break;
         default:
             echo "ERROR: Invalid action\n";
-            echo "Valid actions: add, update, remove, list\n";
+            echo "Valid actions: add, update, remove, list, version\n";
             echo "Use: ?action=list or ?command=list\n";
             http_response_code(400);
     }
@@ -261,6 +272,25 @@ function handleList() {
             $server['modName'] ?? 'vanilla',
             $server['modVersion'] ?? ''
         );
+    }
+}
+
+/**
+ * Return latest version information for update checking
+ * Response format:
+ * OK\n
+ * <latest_version>\t<download_url>\n
+ */
+function handleVersion() {
+    $clientVersion = sanitize($_GET['gameversion'] ?? $_GET['version'] ?? '');
+    
+    echo "OK\n";
+    echo LATEST_VERSION . "\t" . DOWNLOAD_URL . "\n";
+    
+    // Optionally log version checks for analytics
+    if (!empty($clientVersion)) {
+        $ip = getRealClientIP();
+        error_log("Version check from $ip running $clientVersion (latest: " . LATEST_VERSION . ")");
     }
 }
 
