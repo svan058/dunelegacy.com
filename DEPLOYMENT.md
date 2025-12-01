@@ -40,17 +40,23 @@ cd deploy && ./create-droplet.sh
 ```
 Single Droplet ($6/month)
 Ubuntu 24.04 + Apache + PHP
-Auto-deploys (~20 sec)
+Auto-deploys via GitHub Actions (~20 sec)
          ↓
     dunelegacy.com
          ├── / → Static website
          └── /metaserver/ → PHP API
 ```
 
+**How auto-deploy works:**
+1. You push to `main` branch
+2. GitHub Actions SSHs into the droplet
+3. Runs `git pull` in `/var/www/html`
+4. Done! Changes are live.
+
 **Directory structure on droplet:**
-- `/var/www/html/` → Website files (root)
+- `/var/www/html/` → Git repo (website + metaserver code)
 - `/var/www/html/metaserver/` → Metaserver PHP files
-- `/var/www/data/` → Persistent game statistics
+- `/var/www/data/` → Persistent game statistics (NOT in git)
 
 ---
 
@@ -76,7 +82,7 @@ cd deploy
 **What it does:**
 - Creates Ubuntu 24.04 VM
 - Installs Apache + PHP
-- Deploys metaserver code
+- Clones repo directly to `/var/www/html` (as a git repo for auto-deploy)
 - Creates persistent data directory
 
 **Save the IP address it gives you!**
@@ -200,6 +206,21 @@ gh run list
 
 # Re-run setup
 cd deploy && ./setup-github-actions.sh
+```
+
+### Git pull failing on droplet
+
+If you see "not a git repository" errors, the droplet wasn't set up correctly:
+
+```bash
+ssh root@<DROPLET_IP>
+cd /var/www/html
+git init
+git remote add origin https://github.com/svan058/dunelegacy.com.git
+git config --global --add safe.directory /var/www/html
+git fetch origin main
+git checkout -f main
+chown -R www-data:www-data /var/www/html
 ```
 
 ### DNS not resolving

@@ -40,12 +40,15 @@ runcmd:
   # Remove default Apache files
   - rm -rf /var/www/html/*
   
-  # Clone repo and deploy both website and metaserver
-  - git clone https://github.com/svan058/dunelegacy.com.git /tmp/repo
-  - cp -r /tmp/repo/website/* /var/www/html/
-  - mkdir -p /var/www/html/metaserver
-  - cp -r /tmp/repo/metaserver/* /var/www/html/metaserver/
-  - rm -rf /tmp/repo
+  # Clone repo directly to web root (enables git pull for auto-deploy)
+  - git clone https://github.com/svan058/dunelegacy.com.git /var/www/html
+  
+  # Move website files to root and keep metaserver in place
+  - cp -r /var/www/html/website/* /var/www/html/
+  - rm -rf /var/www/html/website
+  
+  # Configure git for GitHub Actions deployment
+  - git config --global --add safe.directory /var/www/html
   
   # Create data directory with proper permissions
   - mkdir -p /var/www/data
