@@ -150,6 +150,15 @@ nav a:hover {
     line-height: 1.8;
 }
 
+.hero a {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+.hero a:hover {
+    color: #f0c040;
+}
+
 .version-info {
     margin-top: 25px;
     font-size: 0.95em;
@@ -248,6 +257,14 @@ nav a:hover {
     font-weight: 300;
 }
 
+.section a:not(.button):not(.button-small) {
+    color: var(--primary);
+}
+
+.section a:not(.button):not(.button-small):hover {
+    color: #f0c040;
+}
+
 /* Highlights Grid */
 .highlights {
     display: grid;
@@ -333,6 +350,14 @@ nav a:hover {
 .download-card p {
     color: var(--gray);
     margin-bottom: 20px;
+}
+
+.download-card a:not(.button) {
+    color: var(--primary);
+}
+
+.download-card a:not(.button):hover {
+    color: #f0c040;
 }
 
 .download-card .small-text {
