@@ -1,9 +1,10 @@
-name: Deploy Metaserver to Droplet
+name: Deploy to Droplet
 
 on:
   push:
     branches: [main]
     paths:
+      - 'website/**'
       - 'metaserver/**'
   workflow_dispatch:  # Allow manual deployment
 
@@ -27,13 +28,16 @@ jobs:
           ssh-keyscan -H $DROPLET_IP >> ~/.ssh/known_hosts
           
           # Deploy to droplet
-          echo "🚀 Deploying to metaserver droplet..."
+          echo "🚀 Deploying to droplet..."
           ssh -o StrictHostKeyChecking=no root@$DROPLET_IP << 'ENDSSH'
             set -e
             cd /var/www/html
             
             echo "📥 Pulling latest code from GitHub..."
             git pull origin main
+            
+            echo "📂 Copying website files to root..."
+            cp -r /var/www/html/website/* /var/www/html/
             
             echo "🔧 Setting permissions..."
             chown -R www-data:www-data /var/www/html
@@ -45,6 +49,6 @@ jobs:
             git log -1 --oneline
 ENDSSH
           
-          echo "🎉 Metaserver deployed successfully!"
-          echo "🌐 View at: http://$DROPLET_IP/index.php"
+          echo "🎉 Website and metaserver deployed successfully!"
+          echo "🌐 View at: https://dunelegacy.com"
 
