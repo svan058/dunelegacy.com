@@ -25,7 +25,7 @@ if (!defined('STATS_FILE')) {
 
 // Latest game version - update this when releasing new versions
 if (!defined('LATEST_VERSION')) {
-    define('LATEST_VERSION', '0.99.1');
+    define('LATEST_VERSION', '0.99.2');
 }
 if (!defined('DOWNLOAD_URL')) {
     define('DOWNLOAD_URL', 'https://dunelegacy.com/#download');
