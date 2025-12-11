@@ -469,6 +469,7 @@ function sendDiscordNotification($name, $map, $maxPlayers, $version, $modName, $
     $payload = json_encode([
         'embeds' => [[
             'title' => '🎮 New Game Hosted',
+            'url' => 'https://dunelegacy.com/metaserver/',
             'color' => 0xE67E22, // Dune orange
             'fields' => [
                 ['name' => 'Server', 'value' => $name ?: 'Unnamed', 'inline' => true],

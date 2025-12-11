@@ -66,7 +66,7 @@
     </style>
 </head>
 <body>
-    <h1>🎮 Dune Legacy Metaserver</h1>
+    <h1><a href="https://dunelegacy.com/">🎮 Dune Legacy</a> Metaserver</h1>
     
     <?php
     require_once 'metaserver.php';
