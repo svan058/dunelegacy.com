@@ -30,10 +30,10 @@ jobs:
           echo "Deploying to droplet..."
           ssh -o StrictHostKeyChecking=no root@$DROPLET_IP 'cd /var/www/html && git pull origin main && cp -r website/* . && chown -R www-data:www-data /var/www/html && git log -1 --oneline'
           
-          # Configure Discord webhook in Apache if secret is set
+          # Configure Discord webhook if secret is set
           if [ -n "$DISCORD_WEBHOOK_URL" ]; then
             echo "Configuring Discord webhook..."
-            ssh -o StrictHostKeyChecking=no root@$DROPLET_IP "sed -i '/SetEnv DISCORD_WEBHOOK_URL/d' /etc/apache2/sites-available/dunelegacy.conf && sed -i '/<Directory \/var\/www\/html\/metaserver>/a\            SetEnv DISCORD_WEBHOOK_URL $DISCORD_WEBHOOK_URL' /etc/apache2/sites-available/dunelegacy.conf && systemctl reload apache2"
+            ssh -o StrictHostKeyChecking=no root@$DROPLET_IP "echo '$DISCORD_WEBHOOK_URL' > /var/www/data/discord_webhook.txt && chown www-data:www-data /var/www/data/discord_webhook.txt && chmod 600 /var/www/data/discord_webhook.txt"
           fi
           
           echo "Deployment complete!"

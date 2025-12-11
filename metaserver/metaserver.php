@@ -456,7 +456,14 @@ function saveStats($stats) {
  * Send Discord webhook notification for new game
  */
 function sendDiscordNotification($name, $map, $maxPlayers, $version, $modName, $modVersion) {
-    $webhookUrl = getenv('DISCORD_WEBHOOK_URL');
+    // Try config file first, then environment variable
+    $configFile = DATA_DIR . '/discord_webhook.txt';
+    if (file_exists($configFile)) {
+        $webhookUrl = trim(file_get_contents($configFile));
+    } else {
+        $webhookUrl = getenv('DISCORD_WEBHOOK_URL');
+    }
+    
     if (empty($webhookUrl)) {
         return;
     }
