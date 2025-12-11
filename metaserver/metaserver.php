@@ -379,6 +379,9 @@ function recordGameStart($name, $map, $maxPlayers, $version, $modName = 'vanilla
     $stats['popular_mods'][$modKey]++;
     
     saveStats($stats);
+    
+    // Send Discord notification for new game
+    sendDiscordNotification($name, $map, $maxPlayers, $version, $modName, $modVersion);
 }
 
 /**
@@ -447,5 +450,46 @@ function loadStats() {
 function saveStats($stats) {
     $data = json_encode($stats, JSON_PRETTY_PRINT);
     @file_put_contents(STATS_FILE, $data, LOCK_EX);
+}
+
+/**
+ * Send Discord webhook notification for new game
+ */
+function sendDiscordNotification($name, $map, $maxPlayers, $version, $modName, $modVersion) {
+    $webhookUrl = getenv('DISCORD_WEBHOOK_URL');
+    if (empty($webhookUrl)) {
+        return;
+    }
+    
+    $modDisplay = $modName;
+    if ($modVersion) {
+        $modDisplay .= ' v' . $modVersion;
+    }
+    
+    $payload = json_encode([
+        'embeds' => [[
+            'title' => '🎮 New Game Hosted',
+            'color' => 0xE67E22, // Dune orange
+            'fields' => [
+                ['name' => 'Server', 'value' => $name ?: 'Unnamed', 'inline' => true],
+                ['name' => 'Map', 'value' => $map ?: 'Unknown', 'inline' => true],
+                ['name' => 'Players', 'value' => "0/$maxPlayers", 'inline' => true],
+                ['name' => 'Version', 'value' => $version ?: '?', 'inline' => true],
+                ['name' => 'Mod', 'value' => $modDisplay, 'inline' => true],
+            ],
+            'timestamp' => date('c')
+        ]]
+    ]);
+    
+    $ch = curl_init($webhookUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 5
+    ]);
+    curl_exec($ch);
+    curl_close($ch);
 }
 

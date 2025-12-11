@@ -73,6 +73,8 @@ runcmd:
         # Metaserver data directory
         <Directory /var/www/html/metaserver>
             SetEnv DATA_DIR /var/www/data
+            # Discord webhook for game notifications (set your webhook URL here)
+            # SetEnv DISCORD_WEBHOOK_URL https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN
         </Directory>
         
         ErrorLog ${APACHE_LOG_DIR}/dunelegacy-error.log
