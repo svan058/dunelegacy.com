@@ -456,15 +456,25 @@ function saveStats($stats) {
  * Send Discord webhook notification for new game
  */
 function sendDiscordNotification($name, $map, $maxPlayers, $version, $modName, $modVersion) {
+    $logFile = DATA_DIR . '/discord.log';
+    $log = function($msg) use ($logFile) {
+        @file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+    };
+    
+    $log("Starting Discord notification for: $name");
+    
     // Try config file first, then environment variable
     $configFile = DATA_DIR . '/discord_webhook.txt';
     if (file_exists($configFile)) {
         $webhookUrl = trim(file_get_contents($configFile));
+        $log("Webhook URL loaded from config file");
     } else {
         $webhookUrl = getenv('DISCORD_WEBHOOK_URL');
+        $log("Config file not found, trying env var: " . ($webhookUrl ? "found" : "not found"));
     }
     
     if (empty($webhookUrl)) {
+        $log("ERROR: No webhook URL configured");
         return;
     }
     
@@ -489,6 +499,8 @@ function sendDiscordNotification($name, $map, $maxPlayers, $version, $modName, $
         ]]
     ]);
     
+    $log("Sending payload to Discord...");
+    
     $ch = curl_init($webhookUrl);
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
@@ -497,7 +509,15 @@ function sendDiscordNotification($name, $map, $maxPlayers, $version, $modName, $
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 5
     ]);
-    curl_exec($ch);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
     curl_close($ch);
+    
+    if ($error) {
+        $log("ERROR: curl failed - $error");
+    } else {
+        $log("Response: HTTP $httpCode - $response");
+    }
 }
 
