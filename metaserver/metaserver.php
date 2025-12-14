@@ -104,9 +104,12 @@ if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
         case 'version':
             handleVersion();
             break;
+        case 'gamestart':
+            handleGameStart();
+            break;
         default:
             echo "ERROR: Invalid action\n";
-            echo "Valid actions: add, update, remove, list, version\n";
+            echo "Valid actions: add, update, remove, list, version, gamestart\n";
             echo "Use: ?action=list or ?command=list\n";
             http_response_code(400);
     }
@@ -450,6 +453,106 @@ function loadStats() {
 function saveStats($stats) {
     $data = json_encode($stats, JSON_PRETTY_PRINT);
     @file_put_contents(STATS_FILE, $data, LOCK_EX);
+}
+
+/**
+ * Handle game start notification (when countdown begins)
+ */
+function handleGameStart() {
+    $secret = sanitize($_GET['secret'] ?? '');
+    $map = sanitize($_GET['map'] ?? 'Unknown');
+    $modName = sanitize($_GET['modname'] ?? 'vanilla');
+    $players = sanitize($_GET['players'] ?? '');  // Format: "House1:Player1,House2:Player2,..."
+    $version = sanitize($_GET['version'] ?? '');
+    
+    if (empty($secret)) {
+        echo "ERROR: Secret required\n";
+        return;
+    }
+    
+    // Send Discord notification
+    sendGameStartNotification($map, $modName, $players, $version);
+    
+    echo "OK\n";
+}
+
+/**
+ * Send Discord webhook notification for game starting
+ */
+function sendGameStartNotification($map, $modName, $players, $version) {
+    $logFile = DATA_DIR . '/discord.log';
+    $log = function($msg) use ($logFile) {
+        @file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+    };
+    
+    $log("Starting Game Start notification for map: $map");
+    
+    // Try config file first, then environment variable
+    $configFile = DATA_DIR . '/discord_webhook.txt';
+    if (file_exists($configFile)) {
+        $webhookUrl = trim(file_get_contents($configFile));
+    } else {
+        $webhookUrl = getenv('DISCORD_WEBHOOK_URL');
+    }
+    
+    if (empty($webhookUrl)) {
+        $log("ERROR: No webhook URL configured");
+        return;
+    }
+    
+    // Parse players string into readable format
+    // Input: "Atreides:Player1,Harkonnen:Player2,Ordos:QuantBot"
+    // Output: formatted list
+    $playerList = [];
+    if (!empty($players)) {
+        $pairs = explode(',', $players);
+        foreach ($pairs as $pair) {
+            $parts = explode(':', $pair, 2);
+            if (count($parts) == 2) {
+                $house = trim($parts[0]);
+                $name = trim($parts[1]);
+                $playerList[] = "**$house**: $name";
+            }
+        }
+    }
+    $playersDisplay = !empty($playerList) ? implode("\n", $playerList) : 'Unknown';
+    
+    $modDisplay = ($modName && $modName !== 'vanilla') ? $modName : 'vanilla';
+    
+    $payload = json_encode([
+        'embeds' => [[
+            'title' => '🚀 Game Starting!',
+            'color' => 0x2ECC71, // Green for "go"
+            'fields' => [
+                ['name' => 'Map', 'value' => $map ?: 'Unknown', 'inline' => true],
+                ['name' => 'Mod', 'value' => $modDisplay, 'inline' => true],
+                ['name' => 'Version', 'value' => $version ?: '?', 'inline' => true],
+                ['name' => 'Players', 'value' => $playersDisplay, 'inline' => false],
+            ],
+            'timestamp' => date('c')
+        ]]
+    ]);
+    
+    $log("Sending game start payload to Discord...");
+    
+    $ch = curl_init($webhookUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 5
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+    
+    if ($error) {
+        $log("ERROR: curl failed - $error");
+    } else {
+        $log("Response: HTTP $httpCode - $response");
+    }
 }
 
 /**
