@@ -22,6 +22,22 @@ if (!defined('MAX_SERVERS')) {
 if (!defined('STATS_FILE')) {
     define('STATS_FILE', DATA_DIR . '/stats.json');
 }
+if (!defined('PUNCH_FILE')) {
+    define('PUNCH_FILE', DATA_DIR . '/punch.dat');
+}
+// NAT traversal configuration
+if (!defined('PUNCH_REQUEST_TTL')) {
+    define('PUNCH_REQUEST_TTL', 60); // Punch requests expire after 60 seconds
+}
+if (!defined('PUNCH_READY_TTL')) {
+    define('PUNCH_READY_TTL', 30); // Ready signals expire after 30 seconds
+}
+if (!defined('MAX_PUNCH_REQUESTS_PER_SESSION')) {
+    define('MAX_PUNCH_REQUESTS_PER_SESSION', 5);
+}
+if (!defined('PUNCH_RATE_LIMIT_PER_IP')) {
+    define('PUNCH_RATE_LIMIT_PER_IP', 10); // 10 requests per minute per IP
+}
 
 // Latest game version - update this when releasing new versions
 if (!defined('LATEST_VERSION')) {
@@ -101,15 +117,30 @@ if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
         case 'list':
             handleList();
             break;
+        case 'list2':
+            handleList2();
+            break;
         case 'version':
             handleVersion();
             break;
         case 'gamestart':
             handleGameStart();
             break;
+        case 'punch_request':
+            handlePunchRequest();
+            break;
+        case 'punch_poll':
+            handlePunchPoll();
+            break;
+        case 'punch_ready':
+            handlePunchReady();
+            break;
+        case 'punch_status':
+            handlePunchStatus();
+            break;
         default:
             echo "ERROR: Invalid action\n";
-            echo "Valid actions: add, update, remove, list, version, gamestart\n";
+            echo "Valid actions: add, update, remove, list, list2, version, gamestart, punch_request, punch_poll, punch_ready, punch_status\n";
             echo "Use: ?action=list or ?command=list\n";
             http_response_code(400);
     }
@@ -117,6 +148,7 @@ if (basename($_SERVER['PHP_SELF']) === 'metaserver.php') {
 
 /**
  * Add a new game server
+ * Extended for NAT traversal: accepts stun_port, returns session_id
  */
 function handleAdd() {
     // Get real client IP (handle load balancers/proxies)
@@ -131,6 +163,12 @@ function handleAdd() {
     $localIP = sanitize($_GET['localip'] ?? ''); // Optional local/LAN IP from client
     $modName = sanitize($_GET['modname'] ?? 'vanilla');
     $modVersion = sanitize($_GET['modversion'] ?? '');
+    
+    // NAT traversal: STUN-discovered external port (optional)
+    $stunPort = isset($_GET['stun_port']) ? intval($_GET['stun_port']) : null;
+    if ($stunPort !== null && ($stunPort < 1 || $stunPort > 65535)) {
+        $stunPort = null; // Invalid, ignore
+    }
     
     if ($port < 1 || $port > 65535) {
         echo "ERROR: Invalid port\n";
@@ -154,10 +192,25 @@ function handleAdd() {
         return;
     }
     
+    // NAT traversal: Preserve session_id on re-add (same secret)
+    // This is critical - punch flows depend on stable session_id
+    if ($isNewGame) {
+        $sessionId = bin2hex(random_bytes(6)); // 12 hex chars
+    } else {
+        // Preserve existing session_id
+        $sessionId = $servers[$serverId]['sessionId'] ?? bin2hex(random_bytes(6));
+        // Preserve existing stun_port unless new one provided
+        if ($stunPort === null && isset($servers[$serverId]['stunPort'])) {
+            $stunPort = $servers[$serverId]['stunPort'];
+        }
+    }
+    
     $servers[$serverId] = [
         'ip' => $ip,
         'port' => $port,
         'secret' => $secret,
+        'sessionId' => $sessionId,  // NAT traversal: public game identifier
+        'stunPort' => $stunPort ?? $port,  // NAT traversal: STUN-discovered or fallback to port
         'name' => $name,
         'localIP' => $localIP, // Store local IP if provided
         'map' => $map,
@@ -176,7 +229,10 @@ function handleAdd() {
         recordGameStart($name, $map, $maxPlayers, $version, $modName, $modVersion);
     }
     
+    // Extended response for NAT traversal (old clients ignore extra lines)
     echo "OK\n";
+    echo $secret . "\n";      // Line 2: secret (for backward compat)
+    echo $sessionId . "\n";   // Line 3: session_id (new for NAT traversal)
 }
 
 /**
@@ -225,6 +281,15 @@ function handleRemove() {
     $servers = loadServers();
     
     if (isset($servers[$secret])) {
+        // Clean up any punch data for this game
+        $sessionId = $servers[$secret]['sessionId'] ?? '';
+        if (!empty($sessionId)) {
+            $punchData = loadPunchData();
+            unset($punchData['requests'][$sessionId]);
+            unset($punchData['ready'][$sessionId]);
+            savePunchData($punchData);
+        }
+        
         unset($servers[$secret]);
         saveServers($servers);
     }
@@ -276,6 +341,405 @@ function handleList() {
             $server['modVersion'] ?? ''
         );
     }
+}
+
+/**
+ * List all active servers (extended format with NAT traversal fields)
+ * Returns 14 tab-separated fields including session_id and stun_port
+ */
+function handleList2() {
+    $servers = loadServers();
+    $activeServers = [];
+    $now = time();
+    $changed = false;
+    
+    // Filter expired servers
+    foreach ($servers as $id => $server) {
+        if (($now - $server['lastUpdate']) <= SERVER_TIMEOUT) {
+            $activeServers[$id] = $server;
+        } else {
+            $changed = true;
+        }
+    }
+    
+    // Save if we removed expired servers
+    if ($changed) {
+        saveServers($activeServers);
+    }
+    
+    // Output server list with NAT traversal fields:
+    // OK\n
+    // <ip>\t<port>\t<name>\t<version>\t<map>\t<numplayers>\t<maxplayers>\t<pwdprotected>\t<lastupdate>\t<localip>\t<modname>\t<modversion>\t<session_id>\t<stun_port>\n
+    echo "OK\n";
+    foreach ($activeServers as $server) {
+        echo sprintf(
+            "%s\t%d\t%s\t%s\t%s\t%d\t%d\t%s\t%d\t%s\t%s\t%s\t%s\t%d\n",
+            $server['ip'],
+            $server['port'],
+            $server['name'],
+            $server['version'],
+            $server['map'],
+            $server['numPlayers'],
+            $server['maxPlayers'],
+            'false', // password protected (not implemented yet)
+            $server['lastUpdate'],
+            $server['localIP'] ?? '', // Local/LAN IP if provided
+            $server['modName'] ?? 'vanilla',
+            $server['modVersion'] ?? '',
+            $server['sessionId'] ?? '', // NAT traversal: public game identifier
+            $server['stunPort'] ?? $server['port'] // NAT traversal: STUN-discovered port
+        );
+    }
+}
+
+// ============================================================================
+// NAT TRAVERSAL: Hole Punch Coordination Endpoints
+// ============================================================================
+
+/**
+ * Client requests hole punch coordination
+ * GET: ?command=punch_request&session_id=<session_id>&stun_port=<stun_port>
+ * Response: OK\n<client_id>\n or ERROR\n<message>\n
+ */
+function handlePunchRequest() {
+    $sessionId = sanitize($_GET['session_id'] ?? '');
+    $stunPort = intval($_GET['stun_port'] ?? 0);
+    
+    // Validate inputs
+    if (empty($sessionId) || strlen($sessionId) !== 12 || !ctype_xdigit($sessionId)) {
+        echo "ERROR\nInvalid session_id\n";
+        return;
+    }
+    
+    if ($stunPort < 1 || $stunPort > 65535) {
+        echo "ERROR\nInvalid stun_port\n";
+        return;
+    }
+    
+    // Verify game exists
+    $servers = loadServers();
+    $gameFound = false;
+    foreach ($servers as $server) {
+        if (isset($server['sessionId']) && $server['sessionId'] === $sessionId) {
+            $gameFound = true;
+            break;
+        }
+    }
+    
+    if (!$gameFound) {
+        echo "ERROR\nGame not found\n";
+        return;
+    }
+    
+    // Rate limit: 10 requests per minute per IP
+    $clientIP = getRealClientIP();
+    if (isPunchRateLimited($clientIP)) {
+        echo "ERROR\nRate limited\n";
+        return;
+    }
+    
+    // Generate client_id and store punch request
+    $clientId = bin2hex(random_bytes(8)); // 16 hex chars
+    
+    $punchData = loadPunchData();
+    
+    // Check max requests per session
+    $requestCount = 0;
+    if (isset($punchData['requests'][$sessionId])) {
+        $requestCount = count($punchData['requests'][$sessionId]);
+    }
+    
+    if ($requestCount >= MAX_PUNCH_REQUESTS_PER_SESSION) {
+        echo "ERROR\nToo many requests for this game\n";
+        return;
+    }
+    
+    // Store the punch request
+    if (!isset($punchData['requests'][$sessionId])) {
+        $punchData['requests'][$sessionId] = [];
+    }
+    
+    $punchData['requests'][$sessionId][$clientId] = [
+        'client_ip' => $clientIP,  // Derived from connection, not client-provided
+        'client_port' => $stunPort,
+        'timestamp' => time(),
+        'delivered' => false
+    ];
+    
+    // Record rate limit
+    recordPunchRequest($clientIP);
+    
+    savePunchData($punchData);
+    
+    echo "OK\n";
+    echo $clientId . "\n";
+}
+
+/**
+ * Host polls for pending punch requests
+ * GET: ?command=punch_poll&secret=<host_secret>
+ * Response: OK\n[<client_id>\t<client_ip>\t<client_port>\n...]
+ */
+function handlePunchPoll() {
+    $secret = sanitize($_GET['secret'] ?? '');
+    
+    if (empty($secret)) {
+        echo "ERROR\nInvalid secret\n";
+        return;
+    }
+    
+    // Find game by secret
+    $servers = loadServers();
+    if (!isset($servers[$secret])) {
+        echo "ERROR\nGame not found\n";
+        return;
+    }
+    
+    $sessionId = $servers[$secret]['sessionId'] ?? '';
+    if (empty($sessionId)) {
+        echo "OK\n"; // No session_id means old game, no punch requests
+        return;
+    }
+    
+    $punchData = loadPunchData();
+    cleanupExpiredPunchData($punchData);
+    
+    echo "OK\n";
+    
+    if (isset($punchData['requests'][$sessionId])) {
+        foreach ($punchData['requests'][$sessionId] as $clientId => $request) {
+            if (!$request['delivered']) {
+                echo sprintf(
+                    "%s\t%s\t%d\n",
+                    $clientId,
+                    $request['client_ip'],
+                    $request['client_port']
+                );
+                // Mark as delivered
+                $punchData['requests'][$sessionId][$clientId]['delivered'] = true;
+            }
+        }
+        savePunchData($punchData);
+    }
+}
+
+/**
+ * Host signals ready to punch a specific client
+ * GET: ?command=punch_ready&secret=<host_secret>&client_id=<client_id>
+ * Response: OK\n or ERROR\n<message>\n
+ */
+function handlePunchReady() {
+    $secret = sanitize($_GET['secret'] ?? '');
+    $clientId = sanitize($_GET['client_id'] ?? '');
+    
+    if (empty($secret)) {
+        echo "ERROR\nInvalid secret\n";
+        return;
+    }
+    
+    if (empty($clientId) || strlen($clientId) !== 16 || !ctype_xdigit($clientId)) {
+        echo "ERROR\nInvalid client_id\n";
+        return;
+    }
+    
+    // Find game by secret
+    $servers = loadServers();
+    if (!isset($servers[$secret])) {
+        echo "ERROR\nGame not found\n";
+        return;
+    }
+    
+    $server = $servers[$secret];
+    $sessionId = $server['sessionId'] ?? '';
+    
+    if (empty($sessionId)) {
+        echo "ERROR\nGame has no session_id\n";
+        return;
+    }
+    
+    $punchData = loadPunchData();
+    
+    // Store ready signal
+    if (!isset($punchData['ready'][$sessionId])) {
+        $punchData['ready'][$sessionId] = [];
+    }
+    
+    $punchData['ready'][$sessionId][$clientId] = [
+        'host_ip' => $server['ip'],
+        'host_port' => $server['stunPort'] ?? $server['port'],
+        'ready_at' => time()
+    ];
+    
+    savePunchData($punchData);
+    
+    echo "OK\n";
+}
+
+/**
+ * Client polls for punch readiness
+ * GET: ?command=punch_status&session_id=<session_id>&client_id=<client_id>
+ * Response: WAITING\n or READY\n<host_ip>\n<host_port>\n<punch_in_seconds>\n
+ */
+function handlePunchStatus() {
+    $sessionId = sanitize($_GET['session_id'] ?? '');
+    $clientId = sanitize($_GET['client_id'] ?? '');
+    
+    if (empty($sessionId) || strlen($sessionId) !== 12 || !ctype_xdigit($sessionId)) {
+        echo "ERROR\nInvalid session_id\n";
+        return;
+    }
+    
+    if (empty($clientId) || strlen($clientId) !== 16 || !ctype_xdigit($clientId)) {
+        echo "ERROR\nInvalid client_id\n";
+        return;
+    }
+    
+    $punchData = loadPunchData();
+    cleanupExpiredPunchData($punchData);
+    
+    // Check if host has signaled ready
+    if (!isset($punchData['ready'][$sessionId][$clientId])) {
+        echo "WAITING\n";
+        return;
+    }
+    
+    $readyInfo = $punchData['ready'][$sessionId][$clientId];
+    
+    // Calculate punch delay (2 seconds from now)
+    $punchInSeconds = 2;
+    
+    echo "READY\n";
+    echo $readyInfo['host_ip'] . "\n";
+    echo $readyInfo['host_port'] . "\n";
+    echo $punchInSeconds . "\n";
+    
+    // Clean up - one-time read
+    unset($punchData['ready'][$sessionId][$clientId]);
+    if (empty($punchData['ready'][$sessionId])) {
+        unset($punchData['ready'][$sessionId]);
+    }
+    savePunchData($punchData);
+}
+
+// ============================================================================
+// NAT TRAVERSAL: Helper Functions
+// ============================================================================
+
+/**
+ * Load punch data from file
+ */
+function loadPunchData() {
+    if (!file_exists(PUNCH_FILE)) {
+        return ['requests' => [], 'ready' => [], 'rate_limits' => []];
+    }
+    
+    $data = @file_get_contents(PUNCH_FILE);
+    if ($data === false) {
+        return ['requests' => [], 'ready' => [], 'rate_limits' => []];
+    }
+    
+    $punchData = @unserialize($data);
+    if (!is_array($punchData)) {
+        return ['requests' => [], 'ready' => [], 'rate_limits' => []];
+    }
+    
+    return $punchData;
+}
+
+/**
+ * Save punch data to file
+ */
+function savePunchData($punchData) {
+    $data = serialize($punchData);
+    @file_put_contents(PUNCH_FILE, $data, LOCK_EX);
+}
+
+/**
+ * Cleanup expired punch data
+ */
+function cleanupExpiredPunchData(&$punchData) {
+    $now = time();
+    $changed = false;
+    
+    // Cleanup expired requests
+    if (isset($punchData['requests'])) {
+        foreach ($punchData['requests'] as $sessionId => &$requests) {
+            foreach ($requests as $clientId => $request) {
+                if (($now - $request['timestamp']) > PUNCH_REQUEST_TTL) {
+                    unset($requests[$clientId]);
+                    $changed = true;
+                }
+            }
+            if (empty($requests)) {
+                unset($punchData['requests'][$sessionId]);
+            }
+        }
+    }
+    
+    // Cleanup expired ready signals
+    if (isset($punchData['ready'])) {
+        foreach ($punchData['ready'] as $sessionId => &$readySignals) {
+            foreach ($readySignals as $clientId => $ready) {
+                if (($now - $ready['ready_at']) > PUNCH_READY_TTL) {
+                    unset($readySignals[$clientId]);
+                    $changed = true;
+                }
+            }
+            if (empty($readySignals)) {
+                unset($punchData['ready'][$sessionId]);
+            }
+        }
+    }
+    
+    // Cleanup old rate limit entries (older than 1 minute)
+    if (isset($punchData['rate_limits'])) {
+        foreach ($punchData['rate_limits'] as $ip => &$timestamps) {
+            $timestamps = array_filter($timestamps, function($ts) use ($now) {
+                return ($now - $ts) < 60;
+            });
+            if (empty($timestamps)) {
+                unset($punchData['rate_limits'][$ip]);
+            }
+        }
+    }
+    
+    if ($changed) {
+        savePunchData($punchData);
+    }
+}
+
+/**
+ * Check if IP is rate limited for punch requests
+ */
+function isPunchRateLimited($ip) {
+    $punchData = loadPunchData();
+    $now = time();
+    
+    if (!isset($punchData['rate_limits'][$ip])) {
+        return false;
+    }
+    
+    // Count requests in the last minute
+    $recentRequests = array_filter($punchData['rate_limits'][$ip], function($ts) use ($now) {
+        return ($now - $ts) < 60;
+    });
+    
+    return count($recentRequests) >= PUNCH_RATE_LIMIT_PER_IP;
+}
+
+/**
+ * Record a punch request for rate limiting
+ */
+function recordPunchRequest($ip) {
+    $punchData = loadPunchData();
+    
+    if (!isset($punchData['rate_limits'][$ip])) {
+        $punchData['rate_limits'][$ip] = [];
+    }
+    
+    $punchData['rate_limits'][$ip][] = time();
+    
+    savePunchData($punchData);
 }
 
 /**

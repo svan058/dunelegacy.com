@@ -1,5 +1,8 @@
 # Dune Legacy Website & Metaserver
 
+## Workflow
+- Follow `.analysis/development-approach.md` (2-doc feature process under `.analysis/features/`).
+
 ## Project Overview
 Website and multiplayer metaserver for Dune Legacy game.
 - Website: Static HTML at https://dunelegacy.com
@@ -93,4 +96,3 @@ ssh root@192.81.217.88 "tail -f /var/log/apache2/dunelegacy-error.log"
 - Language: PHP 8.3 (metaserver), Static HTML (website)
 - CI/CD: GitHub Actions
 - Storage: Flat files (servers.dat, stats.json)
-
