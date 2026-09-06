@@ -292,6 +292,53 @@ nav a:hover {
     margin-top: 8px;
 }
 
+.download-card .button {
+    background: transparent;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+}
+
+.download-card .button:hover,
+.download-card .button:focus-visible {
+    background: var(--primary);
+    color: var(--darker);
+    transform: translateY(-2px);
+}
+
+.highlight {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 30px;
+    align-items: center;
+    margin: 42px 0 20px;
+    padding: 28px 0;
+    border-top: 1px solid rgba(212, 175, 55, 0.35);
+    border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+}
+
+.highlight-copy h3 {
+    color: var(--primary);
+    margin-bottom: 8px;
+    font-size: 1.35em;
+}
+
+.section .highlight-copy p {
+    max-width: none;
+    margin: 0 0 10px;
+    text-align: left;
+}
+
+.highlight-copy .note {
+    display: inline-block;
+    padding: 6px 10px;
+    font-size: 0.9em;
+}
+
+.highlight-action {
+    justify-self: end;
+    white-space: nowrap;
+}
+
 .download-total-count,
 .download-latest-count {
     display: inline-block;
@@ -502,6 +549,17 @@ footer a:hover {
     .highlights,
     .dunecity-systems {
         grid-template-columns: 1fr;
+    }
+
+    .highlight {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .highlight-action {
+        justify-self: stretch;
+        text-align: center;
+        white-space: normal;
     }
 
     .logo-img {
